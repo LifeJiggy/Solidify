@@ -1,11 +1,11 @@
-# 🔐 SoliGuard - Web3 Smart Contract Security Auditor
+# 🔐 Solidify - Web3 Smart Contract Security Auditor
 
 > **Catch vulnerabilities before attackers do.**
 
-SoliGuard is an AI-powered smart contract security auditor built for Web3 developers. Paste Solidity code, upload a `.sol` file, or scan any live on-chain contract — and get back a structured threat report with plain-English explanations, severity scores, and AI-generated secure patches.
+Solidify is an AI-powered smart contract security auditor built for Web3 developers. Paste Solidity code, upload a `.sol` file, or scan any live on-chain contract — and get back a structured threat report with plain-English explanations, severity scores, and AI-generated secure patches.
 
-Built at **GDG Abuja × Build with AI Sprint Hackathon** by Team SoliGuard.
-Part of the **TCP (The Coding Peace)** ecosystem — *Ghost hunts Web2, SoliGuard hunts Web3.*
+Built at **GDG Abuja × Build with AI Sprint Hackathon** by Team Solidify.
+ecosystem — Solidify hunts Web3.
 
 ---
 
@@ -13,11 +13,11 @@ Part of the **TCP (The Coding Peace)** ecosystem — *Ghost hunts Web2, SoliGuar
 
 Millions of dollars are lost every year to preventable smart contract exploits. Traditional manual security auditing is expensive, slow, and inaccessible to early-stage Web3 projects and independent developers. Most emerging developers deploy contracts without any security review at all.
 
-SoliGuard is the **first line of defense** every Web3 developer deserves.
+Solidify is the **first line of defense** every Web3 developer deserves.
 
 ---
 
-## ✅ What SoliGuard Does
+## ✅ What Solidify Does
 
 - 🔍 **Scans** Solidity contracts for known vulnerability patterns
 - 🧠 **Explains** every risk in plain English — no security background required
@@ -131,8 +131,8 @@ Etherscan / Sourcify / RPC (on-chain mode)
 |---|---------|-------------|
 | 37 | **Audit REST API** | Public API key-gated endpoint for external tool integration. |
 | 38 | **VS Code Extension** | Audit Solidity directly in VS Code with inline annotations. |
-| 39 | **CI/CD Pipeline Integration** | GitHub Action runs SoliGuard on every PR, fails on CRITICAL/HIGH. |
-| 40 | **SoliGuard Agent Mode** | Fully autonomous: discovers contracts, audits each, chains findings, produces ecosystem report. |
+| 39 | **CI/CD Pipeline Integration** | GitHub Action runs Solidify on every PR, fails on CRITICAL/HIGH. |
+| 40 | **Solidify Agent Mode** | Fully autonomous: discovers contracts, audits each, chains findings, produces ecosystem report. |
 
 ---
 
@@ -220,7 +220,7 @@ solidify/
 
 ### 1. Clone
 ```bash
-git clone https://github.com/your-org/soligard.git
+git clone https://github.com/Lifejiggy/solidify.git
 cd solidify
 ```
 
@@ -297,7 +297,7 @@ axios
 
 ---
 
-## 👥 Team SoliGuard
+## 👥 Team Solidify
 
 | Name | Role | Focus | Email |
 |------|------|-------|-------|
@@ -321,7 +321,7 @@ axios
 
 ## ⚠️ Disclaimer
 
-SoliGuard is a security research and educational tool. All exploit generation features are intended for use within **authorized scope only** — on contracts you own, have written, or have explicit permission to test. The TCP team assumes no liability for misuse.
+Solidify is a security research and educational tool. All exploit generation features are intended for use within **authorized scope only** — on contracts you own, have written, or have explicit permission to test. The  team assumes no liability for misuse.
 
 ---
 
@@ -331,6 +331,5 @@ MIT License — see [LICENSE](./LICENSE)
 
 ---
 
-*Built with 🔐 by Team SoliGuard | GDG Abuja × Build with AI Sprint*
-*The Coding Peace (TCP) — ArkhAngelLifeJiggy*
-*SoliGuard v1.0 Roadmap | MVP + 40 Features*
+*Built with 🔐 by Team Solidify | GDG Abuja × Build with AI Sprint*
+*Solidify v1.0 Roadmap | MVP + 40 Features*
