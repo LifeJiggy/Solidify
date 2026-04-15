@@ -13,6 +13,9 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 from contextlib import asynccontextmanager
 from chains.full_audit import FullAuditChain
+from exploitation.exploit_engine import ExploitEngine
+from blockchain.etherscan_client import EtherscanClient
+from solidity_analysis.gas_analysis import GasAnalyzer
 
 from fastapi import FastAPI, HTTPException, File, UploadFile, Form, BackgroundTasks
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -920,3 +923,51 @@ async def run_master_audit(request: MasterAuditRequest):
     # Convert string back to dict so FastAPI returns clean JSON, not an escaped string
     import json
     return json.loads(report_json)
+
+    # --- 9. EXPLOITATION ENGINE (Priority 6) ---
+
+class ExploitRequest(BaseModel):
+    contract_code: str
+    vulnerability_type: str
+
+@app.post("/generate-exploit")
+async def create_exploit(request: ExploitRequest):
+    """Generates a Hardhat PoC script to exploit a specific vulnerability."""
+    poc_code = ExploitEngine.generate_poc(request.contract_code, request.vulnerability_type)
+    return {"poc_script": poc_code}
+
+    # --- 10. BLOCKCHAIN INTEGRATION (Priority 2) ---
+
+class AddressRequest(BaseModel):
+    chain_id: int
+    contract_address: str
+
+@app.post("/audit-address")
+async def fetch_and_audit_address(request: AddressRequest):
+    """Fetches verified contract code from Etherscan and runs the Master Audit."""
+    client = EtherscanClient()
+    contract_code = client.fetch_contract(request.chain_id, request.contract_address)
+    
+    if contract_code.startswith("Error"):
+        return {"error": contract_code}
+        
+    # Automatically run the master audit on the fetched code
+    from chains.full_audit import FullAuditChain
+    report_json = FullAuditChain.run_all(contract_code)
+    import json
+    return {"source_code_fetched": True, "audit_report": json.loads(report_json)}
+
+# --- 11. SOLIDITY ANALYSIS: GAS (Priority 3) ---
+
+class GasRequest(BaseModel):
+    contract_code: str
+
+@app.post("/analyze-gas")
+async def optimize_gas(request: GasRequest):
+    """Analyzes EVM bytecode and Solidity logic for gas inefficiencies."""
+    gas_report = GasAnalyzer.analyze(request.contract_code)
+    import json
+    try:
+        return json.loads(gas_report)
+    except:
+        return {"raw_report": gas_report}
