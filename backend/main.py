@@ -635,3 +635,236 @@ if __name__ == "__main__":
         reload=reload,
         log_level="info"
     )
+# --- 1. IMPORTS (Always at the very top) ---
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from dotenv import load_dotenv
+import google.generativeai as genai
+import os
+import json
+import requests
+
+# --- 2. SETUP & CONFIGURATION ---
+# Load environment variables (your Gemini API Key)
+load_dotenv()
+
+# Configure the AI model
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel('gemini-2.5-flash') 
+
+# Initialize the server
+app = FastAPI(title="Solidify AI Audit Engine")
+
+# Allow the frontend to talk to this backend safely
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Define what the frontend will send us (a string of code)
+class AuditRequest(BaseModel):
+    contract_code: str
+
+# --- 3. ROUTES (The endpoints we can actually visit or send data to) ---
+
+@app.get("/")
+def health_check():
+    """Basic health check to ensure the server is running."""
+    api_key = os.getenv("GEMINI_API_KEY")
+    return {
+        "status": "Solidify Backend is ONLINE 🚀", 
+        "gemini_key_loaded": bool(api_key)
+    }
+
+@app.post("/audit")
+async def audit_contract(request: AuditRequest):
+    """Takes Solidity code, sends it to Gemini, and returns structured JSON."""
+    
+    system_prompt = """
+    You are an elite Web3 Security Auditor. Analyze the provided Solidity smart contract for vulnerabilities. 
+    
+    CRITICAL INSTRUCTIONS:
+    1. Only flag actual security vulnerabilities (e.g., Reentrancy, Access Control, Overflow, Logic Bugs).
+    2. DO NOT flag missing architectural best practices (like missing receive/fallback functions, or missing event emissions) as vulnerabilities unless they directly lead to a severe exploit.
+    3. If no high/medium/critical vulnerabilities exist, you MUST set "is_secure" to true and return an empty [] for "vulnerabilities".
+
+    You MUST return ONLY a valid JSON object matching this exact schema:
+    {
+      "contract_name": "Name of the analyzed contract",
+      "audit_summary": "A 2-sentence executive summary.",
+      "is_secure": true or false,
+      "vulnerabilities": [
+        {
+          "title": "Vulnerability Name",
+          "severity": "CRITICAL, HIGH, or MEDIUM",
+          "cvss_score": 9.8,
+          "swc_id": "SWC-XXX",
+          "line_numbers": "12-15",
+          "description": "Clear explanation of the exploit.",
+          "remediation": "How to fix it.",
+          "patched_code_snippet": "The secure code replacing the vulnerable lines."
+        }
+      ]
+    }
+    """
+    
+    full_prompt = f"{system_prompt}\n\nHere is the contract to audit:\n{request.contract_code}"
+    
+    try:
+        # Ask Gemini to generate the audit in strict JSON format
+        response = model.generate_content(
+            full_prompt,
+            generation_config=genai.GenerationConfig(
+                response_mime_type="application/json"
+            )
+        )
+        
+        # Parse the text back into actual JSON for FastAPI to send to the frontend
+        return json.loads(response.text)
+        
+    except Exception as e:
+        return {"error": str(e), "message": "The AI engine encountered an error."}
+
+        # --- 4. EXPLOIT GENERATOR (Feature #23) ---
+
+class ExploitRequest(BaseModel):
+    contract_code: str
+    vulnerability_title: str
+
+@app.post("/generate-exploit")
+async def generate_poc(request: ExploitRequest):
+    """Generates a Hardhat/Ethers.js Proof of Concept script to exploit a vulnerability."""
+    
+    exploit_prompt = f"""
+    You are an elite Web3 Security Researcher (Red Team). 
+    Write a complete Hardhat (Ethers.js) Proof of Concept (PoC) exploit script to demonstrate the '{request.vulnerability_title}' vulnerability in the following smart contract.
+    
+    CRITICAL INSTRUCTIONS:
+    1. Write ONLY the raw, executable JavaScript/TypeScript code. 
+    2. Include comments explaining how the attack works step-by-step.
+    3. Do NOT use markdown code blocks (like ```javascript). Just return the raw code.
+    
+    Target Contract:
+    {request.contract_code}
+    """
+    
+    try:
+        # We don't force JSON here, we want raw code
+        response = model.generate_content(exploit_prompt)
+        
+        # Clean up any accidental markdown the AI might try to sneak in
+        clean_code = response.text.replace("```javascript", "").replace("```typescript", "").replace("```", "").strip()
+        
+        return {
+            "status": "success",
+            "vulnerability_targeted": request.vulnerability_title,
+            "exploit_code": clean_code
+        }
+        
+    except Exception as e:
+        return {"error": str(e), "message": "Failed to generate exploit PoC."}
+
+        # --- 5. BLOCKCHAIN INTEGRATION (Feature #5) ---
+
+class AddressAuditRequest(BaseModel):
+    contract_address: str
+
+@app.post("/audit-address")
+async def audit_live_contract(request: AddressAuditRequest):
+    """Fetches verified code from Etherscan and audits it."""
+    
+    etherscan_key = os.getenv("ETHERSCAN_API_KEY")
+    if not etherscan_key:
+        return {"error": "Etherscan API key not configured in .env"}
+
+       # 1. Fetch the code from Etherscan (V2 API)
+    url = f"https://api.etherscan.io/v2/api?chainid=1&module=contract&action=getsourcecode&address={request.contract_address}&apikey={etherscan_key}"
+
+    try:
+        response = requests.get(url)
+        data = response.json()
+        
+        if data['status'] == '0':
+            return {"error": "Failed to fetch contract", "message": data['result']}
+            
+        source_code = data['result'][0]['SourceCode']
+        contract_name = data['result'][0]['ContractName']
+        
+        if not source_code:
+            return {"error": "Contract source code is not verified on Etherscan."}
+            
+    except Exception as e:
+        return {"error": "Etherscan API error", "message": str(e)}
+
+    # 2. Feed the fetched code to our AI Audit Engine
+    prompt = f"""
+    Analyze the following live smart contract ({contract_name}) for vulnerabilities.
+    Apply the exact same strict JSON schema and vulnerability rules as standard audits.
+    
+    Contract Code:
+    {source_code[:100000]} # Truncating slightly just in case it's a massive file
+    """
+    
+    try:
+        # We reuse the same system_prompt and schema from Feature 01!
+        ai_response = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                response_mime_type="application/json",
+            )
+        )
+        return ai_response.text
+        
+    except Exception as e:
+        return {"error": str(e), "message": "AI failed to audit the fetched code."}
+
+    # --- 6. GAS OPTIMIZER (Feature #19) ---
+
+class GasRequest(BaseModel):
+    contract_code: str
+
+@app.post("/analyze-gas")
+async def analyze_gas(request: GasRequest):
+    """Analyzes a smart contract for EVM gas optimizations."""
+    
+    prompt = f"""
+    You are an elite EVM Gas Optimizer. Analyze the provided Solidity code for gas inefficiencies.
+    Focus strictly on:
+    1. Caching state variables in memory (especially inside loops).
+    2. Using `calldata` instead of `memory` for read-only external/public function arguments.
+    3. Replacing long `require` strings with Custom Errors (you MUST use the 'if (!condition) revert CustomError();' syntax).
+    4. Variable packing in structs/storage.
+    
+    Return ONLY a valid JSON object matching this schema:
+    {{
+        "optimization_score": "A, B, C, D, or F",
+        "gas_summary": "A 2-sentence summary of the main inefficiencies.",
+        "optimizations": [
+            {{
+                "title": "Cache State Variable",
+                "line_numbers": "4-8",
+                "description": "Explanation of why the current code wastes gas.",
+                "optimized_code_snippet": "The cheaper way to write it"
+            }}
+        ]
+    }}
+    
+    Contract Code:
+    {request.contract_code}
+    """
+    
+    try:
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                response_mime_type="application/json",
+            )
+        )
+        return response.text
+        
+    except Exception as e:
+        return {"error": str(e), "message": "Gas analysis failed."}
