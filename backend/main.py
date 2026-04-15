@@ -868,3 +868,41 @@ async def analyze_gas(request: GasRequest):
         
     except Exception as e:
         return {"error": str(e), "message": "Gas analysis failed."}
+
+        # --- 7. DEFI SECURITY: FLASH LOAN DETECTOR (Feature #15) ---
+
+class DeFiRequest(BaseModel):
+    contract_code: str
+
+@app.post("/analyze-defi")
+async def analyze_defi_patterns(request: DeFiRequest):
+    """Analyzes contracts for DeFi-specific risks like Flash Loan price manipulation."""
+    
+    prompt = f"""
+    You are a DeFi Security Specialist. Analyze this code for high-level DeFi attack vectors.
+    Focus on:
+    1. **Price Oracle Manipulation**: Is the contract using `balanceOf(address(this))` or a spot price that can be moved by a flash loan?
+    2. **Flash Loan Sensitivity**: Does a function allow a large influx of capital to influence a logic outcome (e.g., reward calculation)?
+    3. **Slippage Control**: Are swap functions missing `minAmountOut` or equivalent protection?
+
+    Return ONLY a JSON object:
+    {{
+        "is_defi_risk": true/false,
+        "risk_level": "Critical/High/Medium/Low",
+        "attack_vector": "Name of the potential attack (e.g., Oracle Manipulation)",
+        "explanation": "Briefly explain how an attacker would use a flash loan here.",
+        "fix": "How to secure the protocol."
+    }}
+
+    Contract Code:
+    {request.contract_code}
+    """
+    
+    try:
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(response_mime_type="application/json")
+        )
+        return response.text
+    except Exception as e:
+        return {"error": str(e)}
