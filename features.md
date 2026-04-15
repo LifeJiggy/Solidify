@@ -20,6 +20,8 @@
 | 04 | File Upload Audit (.sol) | Audit Intelligence | 🔴 Critical |
 | 05 | On-Chain Contract Scan (Etherscan) | Web3 Integration | 🔴 Critical |
 | 06 | PDF Audit Report Export | Audit Intelligence | 🔴 Critical |
+
+
 | 07 | Multi-Vulnerability Chaining Detection | Audit Intelligence | 🟠 High |
 | 08 | Proof-of-Concept Exploit Generation | Exploitation | 🟠 High |
 | 09 | Reentrancy Attack Simulation | Exploitation | 🟠 High |
@@ -32,6 +34,8 @@
 | 16 | Audit History + Session Memory | Audit Intelligence | 🟠 High |
 | 17 | Natural Language Audit Query ("Is this contract safe to deploy?") | Audit Intelligence | 🟠 High |
 | 18 | Vulnerability Confidence Scoring (AI certainty %) | Audit Intelligence | 🟠 High |
+
+
 | 19 | Gas Optimization Analysis | Audit Intelligence | 🟡 Medium |
 | 20 | Front-Running Attack Detection + PoC | Exploitation | 🟡 Medium |
 | 21 | Sandwich Attack Surface Scanner | Exploitation | 🟡 Medium |
@@ -50,6 +54,8 @@
 | 34 | ERC-20 / ERC-721 / ERC-1155 Compliance Check | Web3 Integration | 🟡 Medium |
 | 35 | On-Chain Transaction History Risk Scan | Web3 Integration | 🟡 Medium |
 | 36 | Wallet Drainer Pattern Detection | Exploitation | 🟡 Medium |
+
+
 | 37 | Audit API (REST) for External Integrations | Audit Intelligence | 🟢 Roadmap |
 | 38 | VS Code Extension (SoliGuard in editor) | Audit Intelligence | 🟢 Roadmap |
 | 39 | CI/CD Pipeline Integration (GitHub Actions) | Audit Intelligence | 🟢 Roadmap |

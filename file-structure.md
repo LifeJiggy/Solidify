@@ -37,12 +37,6 @@ solidify/
 │   │   └── styles/
 │   └── package.json
 │
-├── prompts/                          # Gemini prompts
-│   ├── audit_system.md               # Master system prompt
-│   ├── vuln_categories.md            # Vulnerability taxonomy
-│   ├── patch_format.md               # JSON output format
-│   ├── exploit_poc_template.md       # PoC generation template
-│   └── natural_language_prompt.md    # Query prompt
 │
 ├── sample_contracts/                 # Demo contracts
 │   ├── clean_contract.sol
