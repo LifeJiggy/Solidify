@@ -12,6 +12,7 @@ import logging
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from contextlib import asynccontextmanager
+from chains.full_audit import FullAuditChain
 
 from fastapi import FastAPI, HTTPException, File, UploadFile, Form, BackgroundTasks
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -906,3 +907,16 @@ async def analyze_defi_patterns(request: DeFiRequest):
         return response.text
     except Exception as e:
         return {"error": str(e)}
+
+        # --- 8. MASTER AUDIT: ALL CHAINS (Priority 5) ---
+
+class MasterAuditRequest(BaseModel):
+    contract_code: str
+
+@app.post("/master-audit")
+async def run_master_audit(request: MasterAuditRequest):
+    """Runs all vulnerability detectors and aggregates the results into one massive report."""
+    report_json = FullAuditChain.run_all(request.contract_code)
+    # Convert string back to dict so FastAPI returns clean JSON, not an escaped string
+    import json
+    return json.loads(report_json)
