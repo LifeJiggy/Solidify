@@ -1,0 +1,672 @@
+{
+  "application": {
+    "name": "Solidify",
+    "version": "1.0.0",
+    "description": "Web3 Smart Contract Security Auditor",
+    "author": "GDG Abuja x Build with AI Sprint Hackathon",
+    "license": "MIT",
+    "homepage": "https://github.com/solidify-audit/solidify",
+    "repository": "https://github.com/solidify-audit/solidify.git",
+    "documentation": "https://docs.solidify.io",
+    "keywords": ["security", "smart-contract", "audit", "blockchain", "web3", "solidity", "ethereum"]
+  },
+  "environment": {
+    "mode": "development",
+    "debug": true,
+    "testing": false,
+    "staging": false,
+    "production": false
+  },
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "workers": 4,
+    "timeout": 300,
+    "keepalive": 75,
+    "max_requests": 10000,
+    "max_requests_jitter": 100,
+    "bind": "0.0.0.0:8000",
+    "backlog": 2048,
+    "limit_concurrency": 1000,
+    "limit_max_concurrency": 2000,
+    "graceful_timeout": 30,
+    "secure_scheme_headers": ["X-Forwarded-Proto"],
+    "proxy_headers_count": 1,
+    "trusted_hosts": ["localhost", "127.0.0.1"],
+    "reverse_proxy": false,
+    "ssl": {
+      "enabled": false,
+      "cert": "",
+      "key": "",
+      "version": "TLSv1.2",
+      "ciphers": "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384"
+    }
+  },
+  "database": {
+    "engine": "sqlite",
+    "name": "solidify.db",
+    "host": "localhost",
+    "port": 5432,
+    "user": "solidify",
+    "password": "",
+    "pool_size": 10,
+    "max_overflow": 20,
+    "pool_recycle": 3600,
+    "pool_pre_ping": true,
+    "echo": false,
+    "echo_pool": false,
+    "isolation_level": "READ COMMITTED",
+    "url": "sqlite:///solidify.db",
+    "options": {
+      "pool_recycle": 3600,
+      "pool_pre_ping": true,
+      "pool_timeout": 30
+    },
+    "migrations": {
+      "auto_migrate": false,
+      "migration_folder": "migrations"
+    }
+  },
+  "cache": {
+    "enabled": true,
+    "backend": "memory",
+    "max_size": 1000,
+    "ttl": 3600,
+    "key_prefix": "solidify:",
+    "redis": {
+      "enabled": false,
+      "host": "localhost",
+      "port": 6379,
+      "db": 0,
+      "password": "",
+      "socket_timeout": 5,
+      "socket_connect_timeout": 5,
+      "socket_keepalive": true,
+      "health_check_interval": 30,
+      "decode_responses": true,
+      "max_connections": 50
+    },
+    "memcached": {
+      "enabled": false,
+      "servers": ["localhost:11211"],
+      "default_noreply": true,
+      "default_timeout": 5,
+      "pool_size": 10
+    }
+  },
+  "logging": {
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+      "standard": {
+        "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        "datefmt": "%Y-%m-%d %H:%M:%S"
+      },
+      "detailed": {
+        "format": "%(asctime)s [%(levelname)s] %(name)s [%(filename)s:%(lineno)d] %(funcName)s: %(message)s",
+        "datefmt": "%Y-%m-%d %H:%M:%S"
+      },
+      "json": {
+        "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
+        "format": "%(asctime)s %(name)s %(levelname)s %(message)s"
+      }
+    },
+    "handlers": {
+      "console": {
+        "class": "logging.StreamHandler",
+        "level": "DEBUG",
+        "formatter": "standard",
+        "stream": "ext://sys.stdout"
+      },
+      "file": {
+        "class": "logging.handlers.RotatingFileHandler",
+        "level": "INFO",
+        "formatter": "detailed",
+        "filename": "logs/solidify.log",
+        "maxBytes": 10485760,
+        "backupCount": 10,
+        "encoding": "utf8"
+      },
+      "error_file": {
+        "class": "logging.handlers.RotatingFileHandler",
+        "level": "ERROR",
+        "formatter": "detailed",
+        "filename": "logs/errors.log",
+        "maxBytes": 10485760,
+        "backupCount": 10,
+        "encoding": "utf8"
+      }
+    },
+    "loggers": {
+      "solidify": {
+        "level": "DEBUG",
+        "handlers": ["console", "file", "error_file"],
+        "propagate": false
+      },
+      "solidify.audit": {
+        "level": "INFO",
+        "handlers": ["console", "file"],
+        "propagate": false
+      },
+      "solidify.scanner": {
+        "level": "INFO",
+        "handlers": ["console", "file"],
+        "propagate": false
+      },
+      "solidify.vuln": {
+        "level": "INFO",
+        "handlers": ["console", "file"],
+        "propagate": false
+      },
+      "werkzeug": {
+        "level": "WARNING",
+        "handlers": ["console"],
+        "propagate": false
+      }
+    },
+    "root": {
+      "level": "INFO",
+      "handlers": ["console", "file"]
+    }
+  },
+  "security": {
+    "secret_key": "",
+    "jwt_secret": "",
+    "jwt_algorithm": "HS256",
+    "jwt_expiration": 3600,
+    "jwt_refresh_expiration": 86400,
+    "password_min_length": 8,
+    "password_require_uppercase": true,
+    "password_require_lowercase": true,
+    "password_require_digits": true,
+    "password_require_special": true,
+    "max_login_attempts": 5,
+    "lockout_duration": 900,
+    "session_timeout": 86400,
+    "cookie_secure": true,
+    "cookie_httponly": true,
+    "cookie_samesite": "Lax",
+    "cors": {
+      "enabled": true,
+      "origins": ["http://localhost:3000", "http://localhost:8000"],
+      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+      "expose_headers": ["Content-Length", "Content-Type"],
+      "allow_credentials": true,
+      "max_age": 3600
+    },
+    "rate_limit": {
+      "enabled": true,
+      "default_limits": ["200 per day", "50 per hour"],
+      "storage_url": "memory://",
+      "enabled": true,
+      "limits": {
+        "/api/auth/login": ["5 per minute"],
+        "/api/auth/register": ["3 per minute"],
+        "/api/scan": ["10 per minute"],
+        "/api/audit": ["5 per minute"]
+      }
+    },
+    "csrf": {
+      "enabled": true,
+      "token_len": 32,
+      "token_timeout": 3600
+    },
+    "xss_protection": {
+      "enabled": true,
+      "report_uri": ""
+    },
+    "content_security_policy": {
+      "enabled": true,
+      "default_src": ["'self'"],
+      "script_src": ["'self'", "'unsafe-inline'"],
+      "style_src": ["'self'", "'unsafe-inline'"],
+      "img_src": ["'self'", "data:", "https:"],
+      "font_src": ["'self'", "data:"],
+      "connect_src": ["'self'"],
+      "frame_src": ["'none'"],
+      "object_src": ["'none'"],
+      "base_uri": ["'self'"],
+      "report_uri": ""
+    }
+  },
+  "api": {
+    "version": "v1",
+    "prefix": "/api/v1",
+    "title": "Solidify API",
+    "description": "Web3 Smart Contract Security Auditor API",
+    "contact": {
+      "name": "Solidify Team",
+      "email": "team@solidify.io",
+      "url": "https://solidify.io"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    },
+    "documentation_url": "https://docs.solidify.io",
+    "swagger_ui": true,
+    "redoc": true,
+    "openapi_version": "3.0.0",
+    "servers": [
+      {
+        "url": "http://localhost:8000",
+        "description": "Development server"
+      },
+      {
+        "url": "https://api.solidify.io",
+        "description": "Production server"
+      }
+    ],
+    "tags": [
+      {
+        "name": "audit",
+        "description": "Smart contract auditing operations"
+      },
+      {
+        "name": "scan",
+        "description": "Vulnerability scanning operations"
+      },
+      {
+        "name": "vulnerability",
+        "description": "Vulnerability management"
+      },
+      {
+        "name": "contract",
+        "description": "Contract management"
+      },
+      {
+        "name": "report",
+        "description": "Report generation"
+      },
+      {
+        "name": "auth",
+        "description": "Authentication and authorization"
+      }
+    ]
+  },
+  "audit": {
+    "enabled": true,
+    "auto_scan": false,
+    "scan_on_upload": false,
+    "parallel_scans": 4,
+    "timeout": 600,
+    "retry_count": 3,
+    "retry_delay": 5,
+    "rules": {
+      "enabled": true,
+      "config_dir": "config/rules"
+    },
+    "severity": {
+      "critical": {
+        "score": 9.0,
+        "threshold": 7.0
+      },
+      "high": {
+        "score": 7.0,
+        "threshold": 4.0
+      },
+      "medium": {
+        "score": 4.0,
+        "threshold": 2.0
+      },
+      "low": {
+        "score": 2.0,
+        "threshold": 0.0
+      },
+      "info": {
+        "score": 0.0,
+        "threshold": -1.0
+      }
+    },
+    "notifications": {
+      "enabled": true,
+      "channels": ["email", "slack", "webhook"],
+      "email": {
+        "enabled": false,
+        "smtp_host": "smtp.gmail.com",
+        "smtp_port": 587,
+        "smtp_user": "",
+        "smtp_password": "",
+        "from_address": "alerts@solidify.io",
+        "to_addresses": []
+      },
+      "slack": {
+        "enabled": false,
+        "webhook_url": "",
+        "channel": "#alerts"
+      },
+      "webhook": {
+        "enabled": false,
+        "url": "",
+        "method": "POST",
+        "headers": {}
+      }
+    }
+  },
+  "scanner": {
+    "enabled": true,
+    "parallel_scans": 4,
+    "timeout": 600,
+    "retry_count": 3,
+    "retry_delay": 5,
+    "scan_types": {
+      "static": {
+        "enabled": true,
+        "priority": 1
+      },
+      "dynamic": {
+        "enabled": true,
+        "priority": 2
+      },
+      "fuzz": {
+        "enabled": false,
+        "priority": 3
+      }
+    },
+    "patterns": {
+      "reentrancy": {
+        "enabled": true,
+        "severity": "critical",
+        "weight": 1.0
+      },
+      "overflow": {
+        "enabled": true,
+        "severity": "high",
+        "weight": 1.0
+      },
+      "access_control": {
+        "enabled": true,
+        "severity": "high",
+        "weight": 1.0
+      },
+      "unchecked_call": {
+        "enabled": true,
+        "severity": "medium",
+        "weight": 1.0
+      },
+      "dos": {
+        "enabled": true,
+        "severity": "medium",
+        "weight": 1.0
+      },
+      "front_running": {
+        "enabled": true,
+        "severity": "medium",
+        "weight": 1.0
+      },
+      "timestamp": {
+        "enabled": true,
+        "severity": "low",
+        "weight": 1.0
+      },
+      "selfdestruct": {
+        "enabled": true,
+        "severity": "critical",
+        "weight": 1.0
+      },
+      "centralization": {
+        "enabled": true,
+        "severity": "medium",
+        "weight": 1.0
+      },
+      "oracle": {
+        "enabled": true,
+        "severity": "high",
+        "weight": 1.0
+      }
+    },
+    "rate_limiting": {
+      "enabled": true,
+      "requests_per_minute": 60,
+      "burst_size": 100
+    }
+  },
+  "blockchain": {
+    "networks": {
+      "ethereum": {
+        "mainnet": {
+          "chain_id": 1,
+          "name": "Ethereum Mainnet",
+          "rpc_url": "",
+          "ws_url": "",
+          "explorer": "https://etherscan.io",
+          "explorer_api": "https://api.etherscan.io",
+          "explorer_api_key": ""
+        },
+        "goerli": {
+          "chain_id": 5,
+          "name": "Ethereum Goerli",
+          "rpc_url": "",
+          "ws_url": "",
+          "explorer": "https://goerli.etherscan.io",
+          "explorer_api": "https://api-goerli.etherscan.io",
+          "explorer_api_key": ""
+        },
+        "sepolia": {
+          "chain_id": 11155111,
+          "name": "Ethereum Sepolia",
+          "rpc_url": "",
+          "ws_url": "",
+          "explorer": "https://sepolia.etherscan.io",
+          "explorer_api": "https://api-sepolia.etherscan.io",
+          "explorer_api_key": ""
+        }
+      },
+      "polygon": {
+        "mainnet": {
+          "chain_id": 137,
+          "name": "Polygon Mainnet",
+          "rpc_url": "",
+          "ws_url": "",
+          "explorer": "https://polygonscan.com",
+          "explorer_api": "https://api.polygonscan.com",
+          "explorer_api_key": ""
+        },
+        "mumbai": {
+          "chain_id": 80001,
+          "name": "Polygon Mumbai",
+          "rpc_url": "",
+          "ws_url": "",
+          "explorer": "https://mumbai.polygonscan.com",
+          "explorer_api": "https://api-mumbai.polygonscan.com",
+          "explorer_api_key": ""
+        }
+      },
+      "bsc": {
+        "mainnet": {
+          "chain_id": 56,
+          "name": "BNB Smart Chain",
+          "rpc_url": "",
+          "ws_url": "",
+          "explorer": "https://bscscan.com",
+          "explorer_api": "https://api.bscscan.com",
+          "explorer_api_key": ""
+        },
+        "testnet": {
+          "chain_id": 97,
+          "name": "BNB Smart Chain Testnet",
+          "rpc_url": "",
+          "ws_url": "",
+          "explorer": "https://testnet.bscscan.com",
+          "explorer_api": "https://api-testnet.bscscan.com",
+          "explorer_api_key": ""
+        }
+      }
+    },
+    "etherscan": {
+      "api_key": "",
+      "rate_limit": 5,
+      "cache_ttl": 300
+    },
+    "sourcify": {
+      "enabled": true,
+      "server_url": "https://sourcify.dev/server",
+      "repo_url": "https://repo.sourcify.dev"
+    }
+  },
+  "storage": {
+    "uploads": {
+      "enabled": true,
+      "max_size": 10485760,
+      "allowed_extensions": [".sol", ".json", ".txt"],
+      "allowed_mime_types": [
+        "text/plain",
+        "application/json",
+        "text/x-solidity"
+      ],
+      "storage_backend": "local",
+      "local": {
+        "path": "uploads"
+      }
+    },
+    "reports": {
+      "enabled": true,
+      "storage_backend": "local",
+      "local": {
+        "path": "reports"
+      },
+      "retention_days": 90
+    },
+    "exports": {
+      "enabled": true,
+      "storage_backend": "local",
+      "local": {
+        "path": "exports"
+      },
+      "retention_days": 30
+    }
+  },
+  "features": {
+    "audit": {
+      "enabled": true,
+      "auto_scan": false,
+      "parallel_scans": 4,
+      "ai_assist": false
+    },
+    "scan": {
+      "enabled": true,
+      "parallel_scans": 4,
+      "ai_pattern_detection": false
+    },
+    "hunt": {
+      "enabled": true,
+      "threat_intel": false,
+      "ioc_monitoring": false
+    },
+    "monitoring": {
+      "enabled": false,
+      "metrics": true,
+      "alerts": true
+    },
+    "report": {
+      "enabled": true,
+      "formats": ["json", "html", "pdf", "markdown"],
+      "templates": true
+    },
+    "api": {
+      "enabled": true,
+      "rest": true,
+      "graphql": false,
+      "websocket": false
+    },
+    "plugins": {
+      "enabled": false,
+      "custom_rules": false,
+      "custom_formatters": false
+    }
+  },
+  "limits": {
+    "api": {
+      "max_requests_per_minute": 60,
+      "max_concurrent_requests": 100
+    },
+    "upload": {
+      "max_file_size": 10485760,
+      "max_files_per_request": 10
+    },
+    "scan": {
+      "max_contracts_per_scan": 100,
+      "max_functions_per_contract": 1000,
+      "max_timeout": 600
+    },
+    "audit": {
+      "max_contracts_per_audit": 50,
+      "max_findings_per_audit": 1000
+    },
+    "report": {
+      "max_size": 10485760,
+      "max_pages": 100
+    }
+  },
+  "monitoring": {
+    "enabled": true,
+    "metrics": {
+      "enabled": true,
+      "port": 9090,
+      "path": "/metrics"
+    },
+    "health_check": {
+      "enabled": true,
+      "port": 8001,
+      "path": "/health"
+    },
+    "tracing": {
+      "enabled": false,
+      "jaeger": {
+        "enabled": false,
+        "agent_host": "localhost",
+        "agent_port": 6831
+      },
+      "zipkin": {
+        "enabled": false,
+        "endpoint": "http://localhost:9411/api/v2/spans"
+      }
+    }
+  },
+  "metrics": {
+    "enabled": true,
+    "exporters": {
+      "prometheus": {
+        "enabled": false,
+        "port": 9090,
+        "path": "/metrics"
+      },
+      "statsd": {
+        "enabled": false,
+        "host": "localhost",
+        "port": 8125
+      }
+    }
+  },
+  "external_services": {
+    "etherscan": {
+      "enabled": true,
+      "api_key": "",
+      "rate_limit": 5
+    },
+    "sourcify": {
+      "enabled": true,
+      "server_url": "https://sourcify.dev/server"
+    },
+    "alchemy": {
+      "enabled": false,
+      "api_key": "",
+      "network": "eth-mainnet"
+    },
+    "infura": {
+      "enabled": false,
+      "project_id": "",
+      "project_secret": ""
+    }
+  },
+  "ui": {
+    "enabled": true,
+    "title": "Solidify",
+    "subtitle": "Web3 Smart Contract Security Auditor",
+    "theme": "dark",
+    "color_scheme": "purple",
+    "default_chains": ["ethereum", "polygon", "bsc"],
+    "default_scan_type": "full"
+  }
+}
