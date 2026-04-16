@@ -1,0 +1,271 @@
+{
+  "tools": {
+    "solidity_compiler": {
+      "name": "solc",
+      "description": "Solidity compiler",
+      "versions": [
+        "0.8.24",
+        "0.8.23",
+        "0.8.22",
+        "0.8.21",
+        "0.8.20",
+        "0.8.19",
+        "0.8.18",
+        "0.8.17",
+        "0.8.16",
+        "0.8.15",
+        "0.8.10",
+        "0.8.5",
+        "0.8.0",
+        "0.7.6",
+        "0.7.0",
+        "0.6.12",
+        "0.6.0",
+        "0.5.17",
+        "0.5.0",
+        "0.4.26"
+      ],
+      "default_version": "0.8.24",
+      "settings": {
+        "optimize": true,
+        "runs": 200,
+        "evm_version": "paris"
+      },
+      "download_urls": {
+        "linux": "https://github.com/ethereum/solidity/releases/download/v{version}/solc-static-linux",
+        "macos": "https://github.com/ethereum/solidity/releases/download/v{version}/solc-macos",
+        "windows": "https://github.com/ethereum/solidity/releases/download/v{version}/solc-windows.exe"
+      }
+    },
+    "slither": {
+      "name": "Slither",
+      "description": "Static analyzer for Solidity smart contracts",
+      "version": "0.10.0",
+      "enabled": true,
+      "rules": [
+        "reentrancy-eth",
+        "arbitrary-send-eth",
+        "protected-suicide",
+        "protected-erc20-transfer",
+        "tx-origin",
+        "uninitialized-state",
+        "uninitialized-storage",
+        "missing-calls",
+        "unused-return",
+        "unused-state",
+        "arbitrary-level-licensing"
+      ],
+      " detectors": {
+        "critical": ["reentrancy-eth", "arbitrary-send-eth", "protected-suicide"],
+        "high": ["tx-origin", "uninitialized-state", "uninitialized-storage"],
+        "medium": ["missing-calls", "unused-return"],
+        "low": ["unused-state", "arbitrary-level-licensing"]
+      },
+      "config": {
+        "exclude": [],
+        "exclude_dependencies": false,
+        "filter_paths": [],
+        "filter_libs": []
+      }
+    },
+    "mythril": {
+      "name": "Mythril",
+      "description": "Security analysis tool for EVM bytecode",
+      "version": "0.10.0",
+      "enabled": false,
+      "analysis": {
+        "level": 2,
+        "max_depth": 12,
+        "max_calldatasize": 512,
+        "max_loops": 10
+      },
+      "detect": [
+        "suicide",
+        "arbitrary-storage",
+        "uninitialized-state",
+        "unprotected-mapping-key",
+        "weak-randomness",
+        "integer-overflow",
+        "integer-underflow",
+        "unbounded-mass-transfer"
+      ]
+    },
+    "echidna": {
+      "name": "Echidna",
+      "description": "Fuzzer for Ethereum smart contracts",
+      "version": "2.0.0",
+      "enabled": false,
+      "config": {
+        "testMode": " assertion",
+        "testLimit": 50000,
+        "seqLen": 100,
+        "contractAddr": "0x00a329c0648769A73afAc0066E7005bF825aD876",
+        "deployer": "0x00A9C5F5aD3a9E6d456b4A38f9E3DD9c0E9C6A3A",
+        "sender": ["0x00A9C5F5aD3a9E6d456b4A38f9E3DD9c0E9C6A3A", "0x00C12905c0648769A73afAc0066E7005bF825aD876"],
+        "gasLimit": 6000000,
+        "timeout": 60
+      }
+    },
+    "foundry": {
+      "name": "Foundry",
+      "description": "Ethereum development environment",
+      "version": "0.3.0",
+      "enabled": true,
+      "profile": "default",
+      "profiles": {
+        "default": {
+          "src": "src",
+          "out": "out",
+          "libs": ["lib"],
+          "cache": "cache",
+          "force": false,
+          "evm_version": "paris"
+        }
+      },
+      "test": {
+        "verbosity": 2,
+        "threads": 4,
+        "timeout": 300
+      }
+    },
+    "brownie": {
+      "name": "Brownie",
+      "description": "Python-based development framework",
+      "version": "1.20.0",
+      "enabled": false,
+      "networks": {
+        "development": {
+          "host": "http://127.0.0.1:8545",
+          "chainid": 1,
+          "multicall2": "0x5BA1e12893A80eD184e2EAdB4dB01d1c186cE85A"
+        }
+      }
+    },
+    "hardhat": {
+      "name": "Hardhat",
+      "description": "Ethereum development environment",
+      "version": "2.19.0",
+      "enabled": false,
+      "networks": {
+        "hardhat": {
+          "chainId": 31337,
+          "forks": "mainnet"
+        }
+      },
+      "solidity": {
+        "version": "0.8.24",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          }
+        }
+      }
+    }
+  },
+  "static_analysis": {
+    "enabled": true,
+    "default_tools": ["slither"],
+    "tool_configs": {
+      "slither": {
+        "run_on_contracts": true,
+        "run_on_dependencies": false,
+        "skip_compile": false
+      }
+    },
+    "rules": {
+      "critical": {
+        "max_findings": 0,
+        "fail_build": true
+      },
+      "high": {
+        "max_findings": 3,
+        "fail_build": false
+      },
+      "medium": {
+        "max_findings": 10,
+        "fail_build": false
+      }
+    },
+    "exclusions": {
+      "compiler_versions": ["<0.8.0"],
+      "paths": ["test/", "mock/", "contracts/mocks/"]
+    }
+  },
+  "dynamic_analysis": {
+    "enabled": true,
+    "networks": ["hardhat", "local"],
+    "fuzzing": {
+      "enabled": true,
+      "runs": 10000,
+      "contract_fuzzing": true,
+      "function_fuzzing": true
+    },
+    "invariant_testing": {
+      "enabled": false,
+      "depth": 100,
+      "fail_on_revert": true
+    }
+  },
+  "gas_optimization": {
+    "enabled": true,
+    "tools": ["slither", "foundry"],
+    "optimization_targets": [
+      "variable_packing",
+      "immutable_optimization",
+      "external_function",
+      "struct_packing"
+    ],
+    "thresholds": {
+      "high_gas": 100000,
+      "medium_gas": 50000
+    }
+  },
+  "testing": {
+    "framework": "foundry",
+    "coverage": {
+      "enabled": true,
+      "threshold": 80,
+      "exclude": ["test/", "script/"]
+    },
+    "fuzzing": {
+      "enabled": true,
+      "runs": 1000,
+      "dictionary": true
+    },
+    "invariant": {
+      "enabled": false,
+      "depth": 100,
+      "fail_on_revert": false
+    }
+  },
+  "deployment": {
+    "verifiers": {
+      "etherscan": true,
+      "sourcify": true
+    },
+    "confirmation_required": true,
+    "multi_sig_required": false,
+    "timelock": {
+      "enabled": false,
+      "delay": 86400
+    }
+  },
+  "monitoring": {
+    "enabled": false,
+    "contracts": [],
+    "alerts": {
+      "new_findings": true,
+      "new_deployments": true,
+      "large_transactions": true
+    }
+  },
+  "ci_cd": {
+    "auto_scan_on_commit": true,
+    "auto_scan_on_pr": true,
+    "fail_on_critical": true,
+    "fail_on_high": false,
+    "scan_timeout": 600,
+    "parallel_jobs": 4
+  }
+}

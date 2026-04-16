@@ -1,0 +1,386 @@
+{
+  "hunt_profiles": {
+    "reentrancy": {
+      "name": "Reentrancy Hunter",
+      "description": "Hunt for reentrancy vulnerabilities in smart contracts",
+      "enabled": true,
+      "priority": 1,
+      "detection_methods": ["static_analysis", "dynamic_analysis", "pattern_matching"],
+      "patterns": [
+        {
+          "name": "Unprotected External Call",
+          "pattern": "call\\.value\\(",
+          "severity": "critical",
+          "confidence": 0.9
+        },
+        {
+          "name": "Transfer Without Checks",
+          "pattern": "\\.transfer\\(",
+          "severity": "high",
+          "confidence": 0.8
+        },
+        {
+          "name": "Send Without Checks",
+          "pattern": "\\.send\\(",
+          "severity": "medium",
+          "confidence": 0.7
+        },
+        {
+          "name": "Callback Pattern",
+          "pattern": "require.*msg\\.sender\\.call",
+          "severity": "high",
+          "confidence": 0.85
+        }
+      ],
+      "mitigations": [
+        "Checks-Effects-Interactions pattern",
+        "ReentrancyGuard",
+        "PullPayment pattern"
+      ],
+      "references": [
+        "CWE-367: Time-of-check Time-of-use (TOCTOU) Race Condition",
+        "SWC-107: Reentrancy"
+      ]
+    },
+    "access_control": {
+      "name": "Access Control Hunter",
+      "description": "Hunt for access control vulnerabilities",
+      "enabled": true,
+      "priority": 1,
+      "detection_methods": ["static_analysis", "control_flow_analysis"],
+      "patterns": [
+        {
+          "name": "Missing Access Control",
+          "pattern": "function.*public.*\\{",
+          "severity": "high",
+          "confidence": 0.75
+        },
+        {
+          "name": "Missing OnlyOwner",
+          "pattern": "require.*msg\\.sender.*owner",
+          "severity": "medium",
+          "confidence": 0.7
+        },
+        {
+          "name": "Public Initialize",
+          "pattern": "function initialize\\(",
+          "severity": "critical",
+          "confidence": 0.95
+        },
+        {
+          "name": "Unrestricted Ownable",
+          "pattern": "Ownable",
+          "severity": "low",
+          "confidence": 0.6
+        }
+      ],
+      "mitigations": [
+        "OpenZeppelin AccessControl",
+        "Role-based access control",
+        "Ownable with initializer"
+      ],
+      "references": [
+        "CWE-284: Improper Access Control",
+        "SWC-100: Function Default Visibility"
+      ]
+    },
+    "arithmetic": {
+      "name": "Arithmetic Vulnerability Hunter",
+      "description": "Hunt for integer overflow and underflow vulnerabilities",
+      "enabled": true,
+      "priority": 1,
+      "detection_methods": ["static_analysis", "abstract_interpretation"],
+      "patterns": [
+        {
+          "name": "Unchecked Add",
+          "pattern": "x \\+= y",
+          "severity": "high",
+          "confidence": 0.85
+        },
+        {
+          "name": "Unchecked Subtract",
+          "pattern": "x -= y",
+          "severity": "high",
+          "confidence": 0.85
+        },
+        {
+          "name": "Unchecked Multiply",
+          "pattern": "x *= y",
+          "severity": "high",
+          "confidence": 0.85
+        },
+        {
+          "name": "Unsafe Cast",
+          "pattern": "uint256\\(.*\\)",
+          "severity": "medium",
+          "confidence": 0.7
+        }
+      ],
+      "mitigations": [
+        "SafeMath library",
+        "Solidity 0.8+ checked arithmetic",
+        "OpenZeppelin SafeCast"
+      ],
+      "references": [
+        "CWE-190: Integer Overflow or Underflow",
+        "SWC-101: Integer Overflow"
+      ]
+    },
+    "front_running": {
+      "name": "Front-Running Hunter",
+      "description": "Hunt for front-running vulnerabilities in DeFi protocols",
+      "enabled": true,
+      "priority": 2,
+      "detection_methods": ["pattern_matching", "transaction_analysis"],
+      "patterns": [
+        {
+          "name": "Zero Approval",
+          "pattern": "approve\\(.*0\\)",
+          "severity": "high",
+          "confidence": 0.9
+        },
+        {
+          "name": "Pending Transaction",
+          "pattern": "pending.*transaction",
+          "severity": "medium",
+          "confidence": 0.6
+        },
+        {
+          "name": "Uniswap Callback",
+          "pattern": "uniswapV2Call",
+          "severity": "high",
+          "confidence": 0.8
+        }
+      ],
+      "mitigations": [
+        "Commit-reveal scheme",
+        "Batch auctions",
+        "Request-for-quote (RFQ) model"
+      ],
+      "references": [
+        "CWE-377: Insecure Temporary File",
+        "SWC-114: Transaction Order Dependence"
+      ]
+    },
+    "oracle_manipulation": {
+      "name": "Oracle Manipulation Hunter",
+      "description": "Hunt for oracle manipulation vulnerabilities",
+      "enabled": true,
+      "priority": 1,
+      "detection_methods": ["pattern_matching", "external_call_analysis"],
+      "patterns": [
+        {
+          "name": "Single Oracle Source",
+          "pattern": "getPrice\\(",
+          "severity": "high",
+          "confidence": 0.85
+        },
+        {
+          "name": "Uniswap Price Feed",
+          "pattern": "getReserves\\(\\)",
+          "severity": "high",
+          "confidence": 0.8
+        },
+        {
+          "name": "No TWAP",
+          "pattern": "TimeWeightedAverage",
+          "severity": "medium",
+          "confidence": 0.7
+        }
+      ],
+      "mitigations": [
+        "Chainlink price feeds",
+        "TWAP oracle",
+        "Decentralized oracle networks"
+      ],
+      "references": [
+        "CWE-345: Insufficient Verification of Data Authenticity",
+        "SWC-104: Integer Overflow"
+      ]
+    },
+    "dos": {
+      "name": "Denial of Service Hunter",
+      "description": "Hunt for DoS vulnerabilities",
+      "enabled": true,
+      "priority": 2,
+      "detection_methods": ["static_analysis", "control_flow_analysis"],
+      "patterns": [
+        {
+          "name": "Unbounded Loop",
+          "pattern": "for.*\\.length",
+          "severity": "medium",
+          "confidence": 0.8
+        },
+        {
+          "name": "External Call in Loop",
+          "pattern": "for.*call\\(",
+          "severity": "high",
+          "confidence": 0.85
+        },
+        {
+          "name": "Revert Without Reason",
+          "pattern": "require\\(false",
+          "severity": "low",
+          "confidence": 0.6
+        }
+      ],
+      "mitigations": [
+        "Check-effects-interactions",
+        "Pull over push",
+        "Gas limits on loops"
+      ],
+      "references": [
+        "CWE-400: Uncontrolled Resource Consumption",
+        "SWC-113: DoS with Block Gas Limit"
+      ]
+    }
+  },
+  "threat_intel": {
+    "indicators": {
+      "suspicious_addresses": [],
+      "malicious_contracts": [],
+      "honeypot_patterns": [],
+      "rug_pull_patterns": []
+    },
+    "threat_actors": [
+      {
+        "name": "PinkDrainer",
+        "addresses": [],
+        "description": "Known cryptocurrency drainer"
+      },
+      {
+        "name": "InfernoDrainer",
+        "addresses": [],
+        "description": "Multi-chain drainer service"
+      }
+    ],
+    "attack_vectors": [
+      {
+        "name": "Phishing",
+        "description": "Social engineering attacks to steal private keys",
+        "prevalence": "high"
+      },
+      {
+        "name": "Rug Pull",
+        "description": "Developer abandons project after raising funds",
+        "prevalence": "high"
+      },
+      {
+        "name": "Flash Loan Attack",
+        "description": "Exploiting flash loans for price manipulation",
+        "prevalence": "medium"
+      },
+      {
+        "name": "Bridge Exploit",
+        "description": "Exploiting cross-chain bridges",
+        "prevalence": "medium"
+      }
+    ],
+    "mitre_attack_mapping": [
+      {
+        "technique": "T1190",
+        "name": "Exploit Public-Facing Application",
+        "description": "Exploiting web3 applications"
+      },
+      {
+        "technique": "T1133",
+        "name": "External Remote Services",
+        "description": "Compromised RPC endpoints"
+      },
+      {
+        "technique": "T1200",
+        "name": "Hardware Additions",
+        "description": "Malicious hardware wallets"
+      },
+      {
+        "technique": "T1140",
+        "name": "Deobfuscate/Decode Files",
+        "description": "Obfuscated smart contract code"
+      },
+      {
+        "technique": "T1006",
+        "name": "Direct Volume Access",
+        "description": "Direct contract storage manipulation"
+      }
+    ]
+  },
+  "scan_profiles": {
+    "quick": {
+      "name": "Quick Scan",
+      "description": "Fast scan for common vulnerabilities",
+      "timeout": 60,
+      "rules": ["reentrancy", "access_control", "arithmetic"],
+      "parallel_workers": 2
+    },
+    "full": {
+      "name": "Full Scan",
+      "description": "Comprehensive security audit",
+      "timeout": 600,
+      "rules": "all",
+      "parallel_workers": 4,
+      "enable_sandbox": true
+    },
+    "deep": {
+      "name": "Deep Scan",
+      "description": "In-depth analysis with fuzzing",
+      "timeout": 1800,
+      "rules": "all",
+      "parallel_workers": 8,
+      "enable_sandbox": true,
+      "enable_fuzzing": true
+    }
+  },
+  "alert_rules": {
+    "critical": [
+      {
+        "name": "Critical Vulnerability Found",
+        "condition": "severity == 'critical'",
+        "action": ["notify_immediate", "block_deployment"]
+      },
+      {
+        "name": "Fund Drain Detected",
+        "condition": "pattern == 'drain_funds'",
+        "action": ["notify_immediate"]
+      }
+    ],
+    "high": [
+      {
+        "name": "High Severity Finding",
+        "condition": "severity == 'high'",
+        "action": ["notify_team"]
+      }
+    ],
+    "medium": [
+      {
+        "name": "Medium Severity Finding",
+        "condition": "severity == 'medium'",
+        "action": ["add_to_report"]
+      }
+    ]
+  },
+  "hunt_sessions": {
+    "default_timeout": 3600,
+    "max_concurrent": 10,
+    "auto_cleanup": true,
+    "cleanup_after_days": 30,
+    "enable_checkpointing": true,
+    "checkpoint_interval": 300
+  },
+  "reporting": {
+    "formats": ["json", "html", "pdf", "markdown"],
+    "templates": {
+      "executive_summary": true,
+      "technical_details": true,
+      "remediation_guide": true,
+      "code_snippets": true,
+      "attack_graphs": true
+    },
+    "include": {
+      "severity_summary": true,
+      "vulnerability_details": true,
+      "false_positives": true,
+      "recommendations": true,
+      "references": true
+    }
+  }
+}

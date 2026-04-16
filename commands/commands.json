@@ -1,0 +1,466 @@
+{
+  "application": {
+    "name": "Solidify",
+    "description": "Web3 Smart Contract Security Auditor CLI",
+    "version": "1.0.0"
+  },
+  "commands": {
+    "audit": {
+      "name": "audit",
+      "description": "Create and manage security audits",
+      "subcommands": {
+        "create": {
+          "name": "audit create",
+          "description": "Create a new audit",
+          "options": [
+            "--title", "-t",
+            "--description", "-d",
+            "--contracts", "-c",
+            "--network", "-n",
+            "--auditor", "-a"
+          ],
+          "examples": [
+            "solidify audit create --title \"Token Audit\" --contracts 0x123... --network ethereum"
+          ]
+        },
+        "list": {
+          "name": "audit list",
+          "description": "List all audits",
+          "options": [
+            "--status", "-s",
+            "--limit", "-l",
+            "--offset", "-o"
+          ],
+          "examples": [
+            "solidify audit list --status pending"
+          ]
+        },
+        "get": {
+          "name": "audit get",
+          "description": "Get audit details",
+          "arguments": ["audit_id"],
+          "examples": [
+            "solidify audit get AUDIT-001"
+          ]
+        },
+        "update": {
+          "name": "audit update",
+          "description": "Update audit status",
+          "arguments": ["audit_id"],
+          "options": [
+            "--status", "-s",
+            "--priority", "-p"
+          ],
+          "examples": [
+            "solidify audit update AUDIT-001 --status completed"
+          ]
+        },
+        "delete": {
+          "name": "audit delete",
+          "description": "Delete an audit",
+          "arguments": ["audit_id"],
+          "examples": [
+            "solidify audit delete AUDIT-001 --force"
+          ]
+        },
+        "run": {
+          "name": "audit run",
+          "description": "Run audit on contracts",
+          "arguments": ["audit_id"],
+          "options": [
+            "--rules", "-r",
+            "--parallel", "-p"
+          ],
+          "examples": [
+            "solidify audit run AUDIT-001 --rules reentrancy,access_control"
+          ]
+        }
+      }
+    },
+    "scan": {
+      "name": "scan",
+      "description": "Scan contracts for vulnerabilities",
+      "subcommands": {
+        "quick": {
+          "name": "scan quick",
+          "description": "Quick vulnerability scan",
+          "options": [
+            "--address", "-a",
+            "--network", "-n"
+          ],
+          "examples": [
+            "solidify scan quick --address 0x123... --network ethereum"
+          ]
+        },
+        "full": {
+          "name": "scan full",
+          "description": "Full security scan",
+          "options": [
+            "--address", "-a",
+            "--network", "-n",
+            "--output", "-o"
+          ],
+          "examples": [
+            "solidify scan full --address 0x123... --output report.json"
+          ]
+        },
+        "list": {
+          "name": "scan list",
+          "description": "List scan results",
+          "options": [
+            "--limit", "-l"
+          ],
+          "examples": [
+            "solidify scan list --limit 10"
+          ]
+        },
+        "get": {
+          "name": "scan get",
+          "description": "Get scan details",
+          "arguments": ["scan_id"],
+          "examples": [
+            "solidify scan get SCAN-001"
+          ]
+        }
+      }
+    },
+    "contract": {
+      "name": "contract",
+      "description": "Manage smart contracts",
+      "subcommands": {
+        "add": {
+          "name": "contract add",
+          "description": "Add a contract",
+          "options": [
+            "--address", "-a",
+            "--name", "-n",
+            "--network", "-n",
+            "--source", "-s"
+          ],
+          "examples": [
+            "solidify contract add --address 0x123... --name Token --network ethereum"
+          ]
+        },
+        "list": {
+          "name": "contract list",
+          "description": "List contracts",
+          "options": [
+            "--network", "-n"
+          ],
+          "examples": [
+            "solidify contract list --network ethereum"
+          ]
+        },
+        "get": {
+          "name": "contract get",
+          "description": "Get contract details",
+          "arguments": ["address"],
+          "examples": [
+            "solidify contract get 0x123..."
+          ]
+        },
+        "fetch": {
+          "name": "contract fetch",
+          "description": "Fetch contract from chain",
+          "options": [
+            "--address", "-a",
+            "--network", "-n",
+            "--verify", "-v"
+          ],
+          "examples": [
+            "solidify contract fetch --address 0x123... --network ethereum"
+          ]
+        },
+        "verify": {
+          "name": "contract verify",
+          "description": "Verify contract source",
+          "options": [
+            "--address", "-a",
+            "--network", "-n"
+          ],
+          "examples": [
+            "solidify contract verify --address 0x123... --network ethereum"
+          ]
+        }
+      }
+    },
+    "report": {
+      "name": "report",
+      "description": "Generate and manage reports",
+      "subcommands": {
+        "generate": {
+          "name": "report generate",
+          "description": "Generate audit report",
+          "options": [
+            "--audit_id", "-a",
+            "--format", "-f",
+            "--output", "-o"
+          ],
+          "examples": [
+            "solidify report generate --audit_id AUDIT-001 --format html --output report.html"
+          ]
+        },
+        "list": {
+          "name": "report list",
+          "description": "List reports",
+          "options": [
+            "--audit_id", "-a"
+          ],
+          "examples": [
+            "solidify report list"
+          ]
+        },
+        "download": {
+          "name": "report download",
+          "description": "Download report",
+          "arguments": ["report_id"],
+          "options": [
+            "--output", "-o"
+          ],
+          "examples": [
+            "solidify report download RPT-001 --output report.pdf"
+          ]
+        },
+        "share": {
+          "name": "report share",
+          "description": "Share report",
+          "arguments": ["report_id"],
+          "options": [
+            "--email", "-e",
+            "--link"
+          ],
+          "examples": [
+            "solidify report share RPT-001 --email user@example.com"
+          ]
+        }
+      }
+    },
+    "hunt": {
+      "name": "hunt",
+      "description": "Threat hunting operations",
+      "subcommands": {
+        "start": {
+          "name": "hunt start",
+          "description": "Start a threat hunt",
+          "options": [
+            "--profile", "-p",
+            "--target", "-t"
+          ],
+          "examples": [
+            "solidify hunt start --profile reentrancy"
+          ]
+        },
+        "list": {
+          "name": "hunt list",
+          "description": "List active hunts",
+          "examples": [
+            "solidify hunt list"
+          ]
+        },
+        "stop": {
+          "name": "hunt stop",
+          "description": "Stop a hunt",
+          "arguments": ["hunt_id"],
+          "examples": [
+            "solidify hunt stop HUNT-001"
+          ]
+        }
+      }
+    },
+    "vulnerability": {
+      "name": "vulnerability",
+      "description": "Manage vulnerability database",
+      "subcommands": {
+        "list": {
+          "name": "vulnerability list",
+          "description": "List vulnerabilities",
+          "options": [
+            "--severity", "-s",
+            "--type", "-t"
+          ],
+          "examples": [
+            "solidify vulnerability list --severity critical"
+          ]
+        },
+        "get": {
+          "name": "vulnerability get",
+          "description": "Get vulnerability details",
+          "arguments": ["vuln_id"],
+          "examples": [
+            "solidify vulnerability get VULN-001"
+          ]
+        },
+        "update": {
+          "name": "vulnerability update",
+          "description": "Update vulnerability status",
+          "arguments": ["vuln_id"],
+          "options": [
+            "--status", "-s"
+          ],
+          "examples": [
+            "solidify vulnerability update VULN-001 --status fixed"
+          ]
+        }
+      }
+    },
+    "config": {
+      "name": "config",
+      "description": "Manage configuration",
+      "subcommands": {
+        "show": {
+          "name": "config show",
+          "description": "Show current configuration",
+          "examples": [
+            "solidify config show"
+          ]
+        },
+        "set": {
+          "name": "config set",
+          "description": "Set configuration value",
+          "options": [
+            "--key", "-k",
+            "--value", "-v"
+          ],
+          "examples": [
+            "solidify config set network.default ethereum"
+          ]
+        },
+        "get": {
+          "name": "config get",
+          "description": "Get configuration value",
+          "arguments": ["key"],
+          "examples": [
+            "solidify config get network.default"
+          ]
+        },
+        "reset": {
+          "name": "config reset",
+          "description": "Reset configuration to default",
+          "examples": [
+            "solidify config reset --force"
+          ]
+        }
+      }
+    },
+    "user": {
+      "name": "user",
+      "description": "User management",
+      "subcommands": {
+        "register": {
+          "name": "user register",
+          "description": "Register new user",
+          "options": [
+            "--email", "-e",
+            "--username", "-u",
+            "--password", "-p"
+          ],
+          "examples": [
+            "solidify user register --email user@example.com --username john"
+          ]
+        },
+        "login": {
+          "name": "user login",
+          "description": "Login user",
+          "options": [
+            "--email", "-e",
+            "--password", "-p"
+          ],
+          "examples": [
+            "solidify user login --email user@example.com"
+          ]
+        },
+        "logout": {
+          "name": "user logout",
+          "description": "Logout current user",
+          "examples": [
+            "solidify user logout"
+          ]
+        },
+        "profile": {
+          "name": "user profile",
+          "description": "Show user profile",
+          "examples": [
+            "solidify user profile"
+          ]
+        },
+        "update": {
+          "name": "user update",
+          "description": "Update user profile",
+          "options": [
+            "--email", "-e",
+            "--name", "-n"
+          ],
+          "examples": [
+            "solidify user update --name \"John Doe\""
+          ]
+        }
+      }
+    },
+    "serve": {
+      "name": "serve",
+      "description": "Start web server",
+      "options": [
+        "--host", "-h",
+        "--port", "-p",
+        "--reload", "-r",
+        "--workers", "-w"
+      ],
+      "examples": [
+        "solidify serve --host 0.0.0.0 --port 8000"
+      ]
+    },
+    "init": {
+      "name": "init",
+      "description": "Initialize Solidify project",
+      "options": [
+        "--template", "-t",
+        "--force", "-f"
+      ],
+      "examples": [
+        "solidify init --template basic"
+      ]
+    },
+    "version": {
+      "name": "version",
+      "description": "Show version",
+      "examples": [
+        "solidify version"
+      ]
+    },
+    "help": {
+      "name": "help",
+      "description": "Show help",
+      "arguments": ["command"],
+      "examples": [
+        "solidify help audit",
+        "solidify help scan"
+      ]
+    }
+  },
+  "global_options": {
+    "--verbose": {
+      "short": "-v",
+      "description": "Enable verbose output"
+    },
+    "--quiet": {
+      "short": "-q",
+      "description": "Quiet mode"
+    },
+    "--output": {
+      "short": "-o",
+      "description": "Output format (json, table)"
+    },
+    "--config": {
+      "description": "Config file path"
+    },
+    "--debug": {
+      "description": "Enable debug mode"
+    }
+  },
+  "examples": {
+    "create_audit": "solidify audit create --title \"My Contract Audit\" --contracts 0x123... --network ethereum",
+    "run_scan": "solidify scan full --address 0x123... --network ethereum --output results.json",
+    "generate_report": "solidify report generate --audit_id AUDIT-001 --format html --output audit_report.html",
+    "start_server": "solidify serve --host 0.0.0.0 --port 8000 --reload"
+  }
+}

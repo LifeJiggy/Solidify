@@ -1,0 +1,488 @@
+{
+  "providers": {
+    "etherscan": {
+      "name": "Etherscan",
+      "description": "Ethereum blockchain explorer and API",
+      "enabled": true,
+      "networks": {
+        "mainnet": {
+          "chain_id": 1,
+          "api_url": "https://api.etherscan.io/api",
+          "web_url": "https://etherscan.io",
+          "rate_limit": 5,
+          "rate_limit_period": 1000
+        },
+        "goerli": {
+          "chain_id": 5,
+          "api_url": "https://api-goerli.etherscan.io/api",
+          "web_url": "https://goerli.etherscan.io",
+          "rate_limit": 5,
+          "rate_limit_period": 1000
+        },
+        "sepolia": {
+          "chain_id": 11155111,
+          "api_url": "https://api-sepolia.etherscan.io/api",
+          "web_url": "https://sepolia.etherscan.io",
+          "rate_limit": 5,
+          "rate_limit_period": 1000
+        }
+      },
+      "api_modules": {
+        "account": {
+          "enabled": true,
+          "endpoints": ["balance", "txlist", "txlistinternal", "tokenlist", "tokenbalance"],
+          "rate_limit": 5
+        },
+        "contract": {
+          "enabled": true,
+          "endpoints": ["getabi", "getcontractsourcecode", "verifysourcecode"],
+          "rate_limit": 10
+        },
+        "transaction": {
+          "enabled": true,
+          "endpoints": ["getstatus", "gettxreceiptstatus"],
+          "rate_limit": 5
+        },
+        "block": {
+          "enabled": true,
+          "endpoints": ["getblocknobytime", "getblockcountdown", "getblockbytimestamp"],
+          "rate_limit": 5
+        },
+        "logs": {
+          "enabled": true,
+          "endpoints": ["getLogs", "getTokenEvents"],
+          "rate_limit": 10
+        },
+        "stats": {
+          "enabled": true,
+          "endpoints": ["ethsupply", "ethprice"],
+          "rate_limit": 10
+        },
+        "proxy": {
+          "enabled": true,
+          "endpoints": ["eth_blockNumber", "eth_getBlockByNumber", "eth_getTransactionByHash"],
+          "rate_limit": 20
+        }
+      },
+      "cache": {
+        "enabled": true,
+        "ttl": 300,
+        "max_size": 1000
+      },
+      "auth": {
+        "type": "api_key",
+        "key_header": "X-API-Key",
+        "required": false
+      }
+    },
+    "polygonscan": {
+      "name": "Polygonscan",
+      "description": "Polygon blockchain explorer and API",
+      "enabled": true,
+      "networks": {
+        "mainnet": {
+          "chain_id": 137,
+          "api_url": "https://api.polygonscan.com/api",
+          "web_url": "https://polygonscan.com",
+          "rate_limit": 5,
+          "rate_limit_period": 1000
+        },
+        "mumbai": {
+          "chain_id": 80001,
+          "api_url": "https://api-mumbai.polygonscan.com/api",
+          "web_url": "https://mumbai.polygonscan.com",
+          "rate_limit": 5,
+          "rate_limit_period": 1000
+        }
+      },
+      "api_modules": {
+        "account": {
+          "enabled": true,
+          "endpoints": ["balance", "txlist", "tokenlist"]
+        },
+        "contract": {
+          "enabled": true,
+          "endpoints": ["getabi", "getcontractsourcecode"]
+        },
+        "transaction": {
+          "enabled": true,
+          "endpoints": ["getstatus", "gettxreceiptstatus"]
+        },
+        "proxy": {
+          "enabled": true,
+          "endpoints": ["eth_blockNumber", "eth_getBlockByNumber"]
+        }
+      }
+    },
+    "bscscan": {
+      "name": "BscScan",
+      "description": "BNB Smart Chain explorer and API",
+      "enabled": true,
+      "networks": {
+        "mainnet": {
+          "chain_id": 56,
+          "api_url": "https://api.bscscan.com/api",
+          "web_url": "https://bscscan.com",
+          "rate_limit": 5,
+          "rate_limit_period": 1000
+        },
+        "testnet": {
+          "chain_id": 97,
+          "api_url": "https://api-testnet.bscscan.com/api",
+          "web_url": "https://testnet.bscscan.com",
+          "rate_limit": 5,
+          "rate_limit_period": 1000
+        }
+      },
+      "api_modules": {
+        "account": {
+          "enabled": true,
+          "endpoints": ["balance", "txlist"]
+        },
+        "contract": {
+          "enabled": true,
+          "endpoints": ["getabi", "getcontractsourcecode"]
+        }
+      }
+    },
+    "sourcify": {
+      "name": "Sourcify",
+      "description": "Smart contract source code repository",
+      "enabled": true,
+      "servers": {
+        "production": {
+          "url": "https://sourcify.dev/server",
+          "repo_url": "https://repo.sourcify.dev",
+          "rate_limit": 10,
+          "timeout": 30
+        },
+        "staging": {
+          "url": "https://sourcify.staging-amoy.bot.tax",
+          "repo_url": "https://repo.sourcify.staging-amoy.bot.tax",
+          "rate_limit": 10,
+          "timeout": 30
+        }
+      },
+      "features": {
+        "auto_match": true,
+        "partial_match": true,
+        "metadata_download": true,
+        "source_download": true
+      },
+      "chain_ids": [1, 5, 11155111, 137, 80001, 56, 97, 43114, 43113, 42161, 421613, 10, 420],
+      "cache": {
+        "enabled": true,
+        "ttl": 3600,
+        "max_size": 500
+      }
+    },
+    "alchemy": {
+      "name": "Alchemy",
+      "description": "Web3 development platform and API",
+      "enabled": false,
+      "networks": {
+        "eth-mainnet": {
+          "chain_id": 1,
+          "name": "Ethereum Mainnet",
+          "rpc_url": "",
+          "ws_url": "",
+          "api_url": "https://eth-mainnet.g.alchemy.com/v2",
+          "max_redaneunits": 50,
+          "max_compute_units": 264
+        },
+        "eth-goerli": {
+          "chain_id": 5,
+          "name": "Ethereum Goerli",
+          "rpc_url": "",
+          "ws_url": "",
+          "api_url": "https://eth-goerli.g.alchemy.com/v2"
+        },
+        "eth-sepolia": {
+          "chain_id": 11155111,
+          "name": "Ethereum Sepolia",
+          "rpc_url": "",
+          "ws_url": "",
+          "api_url": "https://eth-sepolia.g.alchemy.com/v2"
+        },
+        "polygon-mainnet": {
+          "chain_id": 137,
+          "name": "Polygon Mainnet",
+          "rpc_url": "",
+          "ws_url": "",
+          "api_url": "https://polygon-mainnet.g.alchemy.com/v2"
+        },
+        "polygon-mumbai": {
+          "chain_id": 80001,
+          "name": "Polygon Mumbai",
+          "rpc_url": "",
+          "ws_url": "",
+          "api_url": "https://polygon-mumbai.g.alchemy.com/v2"
+        },
+        "arb-mainnet": {
+          "chain_id": 42161,
+          "name": "Arbitrum Mainnet",
+          "rpc_url": "",
+          "ws_url": "",
+          "api_url": "https://arb-mainnet.g.alchemy.com/v2"
+        },
+        "arb-goerli": {
+          "chain_id": 421613,
+          "name": "Arbitrum Goerli",
+          "rpc_url": "",
+          "ws_url": "",
+          "api_url": "https://arb-goerli.g.alchemy.com/v2"
+        },
+        "opt-mainnet": {
+          "chain_id": 10,
+          "name": "Optimism Mainnet",
+          "rpc_url": "",
+          "ws_url": "",
+          "api_url": "https://opt-mainnet.g.alchemy.com/v2"
+        },
+        "opt-goerli": {
+          "chain_id": 420,
+          "name": "Optimism Goerli",
+          "rpc_url": "",
+          "ws_url": "",
+          "api_url": "https://opt-goerli.g.alchemy.com/v2"
+        }
+      },
+      "features": {
+        "sdk": true,
+        "nft_api": true,
+        "transact": true,
+        "webhooks": true,
+        "notify": true,
+        "compute_units": true
+      },
+      "websocket": {
+        "enabled": true,
+        "reconnect": true,
+        "reconnect_interval": 5000,
+        "ping_interval": 30000
+      }
+    },
+    "infura": {
+      "name": "Infura",
+      "description": "Web3 infrastructure platform",
+      "enabled": false,
+      "networks": {
+        "mainnet": {
+          "chain_id": 1,
+          "name": "Ethereum Mainnet",
+          "rpc_url": "",
+          "ws_url": "",
+          "api_url": "https://mainnet.infura.io/v3"
+        },
+        "goerli": {
+          "chain_id": 5,
+          "name": "Ethereum Goerli",
+          "rpc_url": "",
+          "ws_url": "",
+          "api_url": "https://goerli.infura.io/v3"
+        },
+        "sepolia": {
+          "chain_id": 11155111,
+          "name": "Ethereum Sepolia",
+          "rpc_url": "",
+          "ws_url": "",
+          "api_url": "https://sepolia.infura.io/v3"
+        },
+        "polygon": {
+          "chain_id": 137,
+          "name": "Polygon",
+          "rpc_url": "",
+          "ws_url": "",
+          "api_url": "https://polygon-mainnet.infura.io/v3"
+        },
+        "arbitrum": {
+          "chain_id": 42161,
+          "name": "Arbitrum",
+          "rpc_url": "",
+          "ws_url": "",
+          "api_url": "https://arbitrum-mainnet.infura.io/v3"
+        },
+        "optimism": {
+          "chain_id": 10,
+          "name": "Optimism",
+          "rpc_url": "",
+          "ws_url": "",
+          "api_url": "https://optimism-mainnet.infura.io/v3"
+        },
+        "avalanche": {
+          "chain_id": 43114,
+          "name": "Avalanche",
+          "rpc_url": "",
+          "ws_url": "",
+          "api_url": "https://avalanche-mainnet.infura.io/v3"
+        }
+      },
+      "features": {
+        "websocket": true,
+        "archive_data": false,
+        "debug_trace": false
+      }
+    },
+    "ankr": {
+      "name": "Ankr",
+      "description": "Multi-chain RPC provider",
+      "enabled": false,
+      "networks": {
+        "eth": {
+          "chain_id": 1,
+          "rpc_url": "https://rpc.ankr.com/eth",
+          "ws_url": "wss://rpc.ankr.com/eth/ws"
+        },
+        "polygon": {
+          "chain_id": 137,
+          "rpc_url": "https://rpc.ankr.com/polygon",
+          "ws_url": "wss://rpc.ankr.com/polygon/ws"
+        },
+        "bsc": {
+          "chain_id": 56,
+          "rpc_url": "https://rpc.ankr.com/bsc",
+          "ws_url": "wss://rpc.ankr.com/bsc/ws"
+        },
+        "avalanche": {
+          "chain_id": 43114,
+          "rpc_url": "https://rpc.ankr.com/avalanche",
+          "ws_url": "wss://rpc.ankr.com/avalanche/ws"
+        },
+        "arbitrum": {
+          "chain_id": 42161,
+          "rpc_url": "https://rpc.ankr.com/arbitrum",
+          "ws_url": "wss://rpc.ankr.com/arbitrum/ws"
+        },
+        "optimism": {
+          "chain_id": 10,
+          "rpc_url": "https://rpc.ankr.com/optimism",
+          "ws_url": "wss://rpc.ankr.com/optimism/ws"
+        }
+      },
+      "features": {
+        "free_tier": true,
+        "websocket": true
+      }
+    },
+    "public_rpc": {
+      "name": "Public RPC",
+      "description": "Public Ethereum RPC endpoints",
+      "enabled": false,
+      "networks": {
+        "mainnet": {
+          "chain_id": 1,
+          "rpc_urls": [
+            "https://cloudflare-eth.com",
+            "https://eth.public-rpc.com"
+          ]
+        },
+        "goerli": {
+          "chain_id": 5,
+          "rpc_urls": [
+            "https://goerli.public-rpc.com"
+          ]
+        }
+      },
+      "rate_limits": {
+        "requests_per_second": 10,
+        "burst": 20
+      },
+      "features": {
+        "batch_requests": true,
+        "logging": false
+      }
+    }
+  },
+  "rate_limiting": {
+    "enabled": true,
+    "strategy": "token_bucket",
+    "global": {
+      "requests_per_minute": 60,
+      "burst_size": 100
+    },
+    "by_provider": {
+      "etherscan": {
+        "requests_per_second": 5,
+        "burst": 10
+      },
+      "alchemy": {
+        "requests_per_second": 50,
+        "burst": 100
+      },
+      "infura": {
+        "requests_per_second": 50,
+        "burst": 100
+      }
+    },
+    "by_network": {
+      "mainnet": {
+        "multiplier": 1.0
+      },
+      "testnet": {
+        "multiplier": 0.5
+      }
+    }
+  },
+  "caching": {
+    "enabled": true,
+    "backend": "memory",
+    "default_ttl": 300,
+    "by_endpoint": {
+      "get_abi": 3600,
+      "get_source_code": 3600,
+      "balance": 60,
+      "transaction": 120,
+      "block": 300
+    },
+    "invalidation": {
+      "on_new_block": true,
+      "on_transaction": false
+    }
+  },
+  "failover": {
+    "enabled": true,
+    "primary": "etherscan",
+    "secondary": "alchemy",
+    "tertiary": "public_rpc",
+    "health_check": {
+      "enabled": true,
+      "interval": 60,
+      "timeout": 10,
+      "unhealthy_threshold": 3,
+      "healthy_threshold": 2
+    }
+  },
+  "retry": {
+    "enabled": true,
+    "max_attempts": 3,
+    "backoff": {
+      "strategy": "exponential",
+      "initial_delay": 1000,
+      "max_delay": 10000,
+      "multiplier": 2.0
+    },
+    "retryable_errors": [
+      "rate_limit",
+      "timeout",
+      "503",
+      "502",
+      "429"
+    ]
+  },
+  "monitoring": {
+    "enabled": true,
+    "metrics": {
+      "request_count": true,
+      "request_duration": true,
+      "error_count": true,
+      "rate_limit_hits": true,
+      "cache_hits": true,
+      "cache_misses": true
+    },
+    "alerting": {
+      "enabled": false,
+      "error_rate_threshold": 0.05,
+      "latency_threshold": 5000
+    }
+  }
+}

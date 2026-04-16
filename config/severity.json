@@ -1,0 +1,358 @@
+{
+  "severity_levels": {
+    "critical": {
+      "level": 1,
+      "name": "Critical",
+      "description": "Critical security vulnerability with severe impact",
+      "cvss_range": {
+        "min": 9.0,
+        "max": 10.0
+      },
+      "color": "#FF0000",
+      "icon": "exclamation-triangle",
+      "actions": ["immediate_fix", "halt_deployment", "notify_team"],
+      "response_sla": 24,
+      "requires_incident_report": true,
+      "examples": [
+        "Smart contract allows anyone to drain all funds",
+        "Critical vulnerability in treasury management",
+        "Unlimited mint capability without authorization",
+        "Private key exposed or weak access control on critical functions"
+      ]
+    },
+    "high": {
+      "level": 2,
+      "name": "High",
+      "description": "High severity security vulnerability",
+      "cvss_range": {
+        "min": 7.0,
+        "max": 8.9
+      },
+      "color": "#FF6600",
+      "icon": "exclamation-circle",
+      "actions": ["prioritized_fix", "review_before_deployment"],
+      "response_sla": 72,
+      "requires_incident_report": false,
+      "examples": [
+        "Reentrancy vulnerability allowing partial fund theft",
+        "Access control bypass for privileged functions",
+        "Integer overflow in critical calculations",
+        "Front-running opportunity in sensitive operations"
+      ]
+    },
+    "medium": {
+      "level": 3,
+      "name": "Medium",
+      "description": "Medium severity security issue",
+      "cvss_range": {
+        "min": 4.0,
+        "max": 6.9
+      },
+      "color": "#FFcc00",
+      "icon": "exclamation",
+      "actions": ["scheduled_fix"],
+      "response_sla": 168,
+      "requires_incident_report": false,
+      "examples": [
+        "Unchecked external call return values",
+        "Timestamp dependency for non-critical operations",
+        "DoS through gas exhaustion (local)",
+        "Insufficient input validation"
+      ]
+    },
+    "low": {
+      "level": 4,
+      "name": "Low",
+      "description": "Low severity security issue",
+      "cvss_range": {
+        "min": 0.1,
+        "max": 3.9
+      },
+      "color": "#00CCFF",
+      "icon": "info",
+      "actions": ["fix_if_time_permits"],
+      "response_sla": 720,
+      "requires_incident_report": false,
+      "examples": [
+        "Gas inefficiency in loops",
+        "Unused public functions that could be external",
+        "Missing event emissions for مهم state changes",
+        "Lack of documentation for complex functions"
+      ]
+    },
+    "informational": {
+      "level": 5,
+      "name": "Informational",
+      "description": "Informational finding or best practice",
+      "cvss_range": {
+        "min": 0.0,
+        "max": 0.0
+      },
+      "color": "#888888",
+      "icon": "info-circle",
+      "actions": ["consider_fix"],
+      "response_sla": null,
+      "requires_incident_report": false,
+      "examples": [
+        "Code can be optimized for gas",
+        "Missing NatSpec documentation",
+        "Hardcoded values that should be configurable",
+        "Testing coverage below threshold"
+      ]
+    }
+  },
+  "cvss_scoring": {
+    "enabled": true,
+    "version": "3.1",
+    "metrics": {
+      "attack_vector": {
+        "network": {
+          "abbreviation": "AV:N",
+          "weight": 0.85,
+          "description": "Attack from network"
+        },
+        "adjacent": {
+          "abbreviation": "AV:A",
+          "weight": 0.62,
+          "description": "Attack from adjacent network"
+        },
+        "local": {
+          "abbreviation": "AV:L",
+          "weight": 0.55,
+          "description": "Attack from local system"
+        },
+        "physical": {
+          "abbreviation": "AV:P",
+          "weight": 0.20,
+          "description": "Physical access required"
+        }
+      },
+      "attack_complexity": {
+        "low": {
+          "abbreviation": "AC:L",
+          "weight": 0.77,
+          "description": "Easy to exploit"
+        },
+        "high": {
+          "abbreviation": "AC:H",
+          "weight": 0.44,
+          "description": "Difficult to exploit"
+        }
+      },
+      "privileges_required": {
+        "none": {
+          "abbreviation": "PR:N",
+          "weight": 0.85,
+          "description": "No privileges required"
+        },
+        "low": {
+          "abbreviation": "PR:L",
+          "weight": 0.62,
+          "description": "Basic user privileges"
+        },
+        "high": {
+          "abbreviation": "PR:H",
+          "weight": 0.27,
+          "description": "Admin privileges required"
+        }
+      },
+      "user_interaction": {
+        "none": {
+          "abbreviation": "UI:N",
+          "weight": 0.85,
+          "description": "No user interaction needed"
+        },
+        "required": {
+          "abbreviation": "UI:R",
+          "weight": 0.62,
+          "description": "User must perform action"
+        }
+      },
+      "scope": {
+        "unchanged": {
+          "abbreviation": "S:U",
+          "weight": 0,
+          "description": "Does not change scope"
+        },
+        "changed": {
+          "abbreviation": "S:C",
+          "weight": 0.0,
+          "description": "Changes security scope"
+        }
+      },
+      "confidentiality": {
+        "none": {
+          "abbreviation": "C:N",
+          "weight": 0.0,
+          "description": "No confidentiality impact"
+        },
+        "low": {
+          "abbreviation": "C:L",
+          "weight": 0.22,
+          "description": "Minimal data access"
+        },
+        "high": {
+          "abbreviation": "C:H",
+          "weight": 0.56,
+          "description": "Complete data access"
+        }
+      },
+      "integrity": {
+        "none": {
+          "abbreviation": "I:N",
+          "weight": 0.0,
+          "description": "No integrity impact"
+        },
+        "low": {
+          "abbreviation": "I:L",
+          "weight": 0.22,
+          "description": "Minimal modification"
+        },
+        "high": {
+          "abbreviation": "I:H",
+          "weight": 0.56,
+          "description": "Complete data modification"
+        }
+      },
+      "availability": {
+        "none": {
+          "abbreviation": "A:N",
+          "weight": 0.0,
+          "description": "No availability impact"
+        },
+        "low": {
+          "abbreviation": "A:L",
+          "weight": 0.22,
+          "description": "Temporary disruption"
+        },
+        "high": {
+          "abbreviation": "A:H",
+          "weight": 0.56,
+          "description": "Permanent downtime"
+        }
+      }
+    }
+  },
+  "confidence_levels": {
+    "confirmed": {
+      "level": 1,
+      "name": "Confirmed",
+      "description": "Vulnerability confirmed through testing",
+      "threshold": 0.9,
+      "color": "#FF0000"
+    },
+    "likely": {
+      "level": 2,
+      "name": "Likely",
+      "description": "Vulnerability likely exists based on code analysis",
+      "threshold": 0.7,
+      "color": "#FF6600"
+    },
+    "possible": {
+      "level": 3,
+      "name": "Possible",
+      "description": "Vulnerability possibly exists",
+      "threshold": 0.5,
+      "color": "#FFFF00"
+    },
+    "uncertain": {
+      "level": 4,
+      "name": "Uncertain",
+      "description": "Uncertain if vulnerability exists",
+      "threshold": 0.3,
+      "color": "#CCCCCC"
+    }
+  },
+  "auto_escalation": {
+    "enabled": true,
+    "rules": [
+      {
+        "condition": {
+          "severity": "informational",
+          "confidence": "confirmed",
+          "has_exploit": true
+        },
+        "action": {
+          "new_severity": "low"
+        }
+      },
+      {
+        "condition": {
+          "severity": "low",
+          "confidence": "confirmed",
+          "has_exploit": true,
+          "impact": "financial"
+        },
+        "action": {
+          "new_severity": "medium"
+        }
+      },
+      {
+        "condition": {
+          "severity": "medium",
+          "has_exploit": true,
+          "impact": "funds"
+        },
+        "action": {
+          "new_severity": "high"
+        }
+      }
+    ]
+  },
+  "severity_thresholds": {
+    "critical_findings": {
+      "max_count": 0,
+      "action": "block_deployment"
+    },
+    "high_findings": {
+      "max_count": 3,
+      "action": "require_approval"
+    },
+    "medium_findings": {
+      "max_count": 10,
+      "action": "warn"
+    },
+    "total_findings": {
+      "max_count": 20,
+      "action": "warn"
+    }
+  },
+  "reporting": {
+    "severity_in_summary": true,
+    "severity_in_stats": true,
+    "group_by_severity": true,
+    "sort_by_severity": true,
+    "show_cvss": true,
+    "show_cwe": true
+  },
+  "notifications": {
+    "critical": {
+      "enabled": true,
+      "channels": ["email", "slack", "webhook"],
+      "immediate": true
+    },
+    "high": {
+      "enabled": true,
+      "channels": ["email", "slack"],
+      "immediate": false
+    },
+    "medium": {
+      "enabled": true,
+      "channels": ["slack"],
+      "immediate": false,
+      "batch": true
+    },
+    "low": {
+      "enabled": false,
+      "channels": [],
+      "batch": true
+    }
+  },
+  "labels": {
+    "critical": ["critical", "urgent", "immediate"],
+    "high": ["high", "priority"],
+    "medium": ["medium", "normal"],
+    "low": ["low", "informational"],
+    "informational": ["info", "note"]
+  }
+}

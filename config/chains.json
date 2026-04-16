@@ -1,0 +1,504 @@
+{
+  "chains": {
+    "ethereum": {
+      "name": "Ethereum",
+      "symbol": "ETH",
+      "chain_id": 1,
+      "network_id": 1,
+      "explorers": [
+        {
+          "name": "Etherscan",
+          "url": "https://etherscan.io",
+          "api_url": "https://api.etherscan.io",
+          "api_key_required": true
+        },
+        {
+          "name": "Blockscout",
+          "url": "https://blockscout.com",
+          "api_url": "https://blockscout.com/api",
+          "api_key_required": false
+        }
+      ],
+      "rpc_endpoints": [
+        {
+          "url": "",
+          "name": "Alchemy",
+          "priority": 1,
+          "health_check": true
+        },
+        {
+          "url": "",
+          "name": "Infura",
+          "priority": 2,
+          "health_check": true
+        },
+        {
+          "url": "https://cloudflare-eth.com",
+          "name": "Cloudflare",
+          "priority": 3,
+          "health_check": false
+        }
+      ],
+      "ws_endpoints": [],
+      "contracts": {
+        "multisig": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "uniswap_factory": "0x5C69bEe701ef814a2B6ae3F91AEb488DD7e9de38",
+        "uniswap_router": "0x7a250d5630B4cF53963160C6cC0dE8cC5B5C36bED",
+        "usdt": "0xdAC17F958D2ee523a2206206994597C13D831C7Cd",
+        "usdc": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "dai": "0x6B175474E890eC94B1E57e289b1Fa8D5b5fB4b8d8"
+      },
+      "features": {
+        "evm": true,
+        "eip1559": true,
+        "eip2930": true,
+        "state_tries": true
+      },
+      "gas": {
+        "min_gas_price": 1000000000,
+        "max_gas_price": 100000000000,
+        "gas_price_multiplier": 1.1,
+        "priority_fee_max": 2000000000
+      }
+    },
+    "polygon": {
+      "name": "Polygon",
+      "symbol": "MATIC",
+      "chain_id": 137,
+      "network_id": 137,
+      "explorers": [
+        {
+          "name": "Polygonscan",
+          "url": "https://polygonscan.com",
+          "api_url": "https://api.polygonscan.com",
+          "api_key_required": true
+        }
+      ],
+      "rpc_endpoints": [
+        {
+          "url": "",
+          "name": "Alchemy",
+          "priority": 1
+        },
+        {
+          "url": "https://polygon-rpc.com",
+          "name": "Public",
+          "priority": 2
+        }
+      ],
+      "ws_endpoints": [],
+      "contracts": {
+        "multisig": "0xA3452aF81D3AE9F6f1F80C0C0aB1C0B5E5d1E3F2"
+      },
+      "features": {
+        "evm": true,
+        "pos": true,
+        "checkpoints": true
+      },
+      "gas": {
+        "min_gas_price": 1,
+        "max_gas_price": 1000,
+        "gas_price_multiplier": 1.1
+      }
+    },
+    "bsc": {
+      "name": "BNB Smart Chain",
+      "symbol": "BNB",
+      "chain_id": 56,
+      "network_id": 56,
+      "explorers": [
+        {
+          "name": "BscScan",
+          "url": "https://bscscan.com",
+          "api_url": "https://api.bscscan.com",
+          "api_key_required": true
+        }
+      ],
+      "rpc_endpoints": [
+        {
+          "url": "",
+          "name": "Public",
+          "priority": 1
+        }
+      ],
+      "ws_endpoints": [],
+      "contracts": {
+        "multisig": "0xA3452aF81D3AE9F6f1F80C0C0aB1C0B5E5d1E3F2"
+      },
+      "features": {
+        "evm": true,
+        "fast_block": true
+      }
+    },
+    "avalanche": {
+      "name": "Avalanche",
+      "symbol": "AVAX",
+      "chain_id": 43114,
+      "network_id": 43114,
+      "explorers": [
+        {
+          "name": "Snowtrace",
+          "url": "https://snowtrace.io",
+          "api_url": "https://api.snowtrace.io",
+          "api_key_required": false
+        }
+      ],
+      "rpc_endpoints": [
+        {
+          "url": "https://api.avax.network/ext/bc/C/rpc",
+          "name": "Public",
+          "priority": 1
+        }
+      ],
+      "features": {
+        "evm": true,
+        "snowman": true
+      }
+    },
+    "arbitrum": {
+      "name": "Arbitrum One",
+      "symbol": "ETH",
+      "chain_id": 42161,
+      "network_id": 42161,
+      "explorers": [
+        {
+          "name": "Arbiscan",
+          "url": "https://arbiscan.io",
+          "api_url": "https://api.arbiscan.io",
+          "api_key_required": true
+        }
+      ],
+      "rpc_endpoints": [
+        {
+          "url": "",
+          "name": "Alchemy",
+          "priority": 1
+        },
+        {
+          "url": "https://arb1.public.arbitrum-rpc.net",
+          "name": "Public",
+          "priority": 2
+        }
+      ],
+      "features": {
+        "evm": true,
+        "optimistic_rollup": true,
+        "delayed_inbox": true
+      }
+    },
+    "optimism": {
+      "name": "Optimism",
+      "symbol": "ETH",
+      "chain_id": 10,
+      "network_id": 10,
+      "explorers": [
+        {
+          "name": "Optimistic Etherscan",
+          "url": "https://optimistic.etherscan.io",
+          "api_url": "https://api-optimistic.etherscan.io",
+          "api_key_required": true
+        }
+      ],
+      "rpc_endpoints": [
+        {
+          "url": "",
+          "name": "Alchemy",
+          "priority": 1
+        },
+        {
+          "url": "https://mainnet.optimism.io",
+          "name": "Public",
+          "priority": 2
+        }
+      ],
+      "features": {
+        "evm": true,
+        "optimistic_rollup": true,
+        "op_stack": true
+      }
+    },
+    "fantom": {
+      "name": "Fantom",
+      "symbol": "FTM",
+      "chain_id": 250,
+      "network_id": 250,
+      "explorers": [
+        {
+          "name": "FTMScan",
+          "url": "https://ftmscan.com",
+          "api_url": "https://api.ftmscan.com",
+          "api_key_required": true
+        }
+      ],
+      "rpc_endpoints": [
+        {
+          "url": "https://rpcapi.fantom.network",
+          "name": "Public",
+          "priority": 1
+        }
+      ],
+      "features": {
+        "evm": true,
+        "opera": true
+      }
+    },
+    "cronos": {
+      "name": "Cronos",
+      "symbol": "CRO",
+      "chain_id": 25,
+      "network_id": 25,
+      "explorers": [
+        {
+          "name": "Cronoscan",
+          "url": "https://cronoscan.org",
+          "api_url": "https://api.cronoscan.org",
+          "api_key_required": true
+        }
+      ],
+      "rpc_endpoints": [
+        {
+          "url": "https://evm.cronos.org",
+          "name": "Public",
+          "priority": 1
+        }
+      ],
+      "features": {
+        "evm": true,
+        "ibc": true
+      }
+    },
+    "base": {
+      "name": "Base",
+      "symbol": "ETH",
+      "chain_id": 8453,
+      "network_id": 8453,
+      "explorers": [
+        {
+          "name": "Basescan",
+          "url": "https://basescan.org",
+          "api_url": "https://api.basescan.org",
+          "api_key_required": true
+        }
+      ],
+      "rpc_endpoints": [
+        {
+          "url": "https://mainnet.base.org",
+          "name": "Public",
+          "priority": 1
+        }
+      ],
+      "features": {
+        "evm": true,
+        "op_stack": true
+      }
+    },
+    "linea": {
+      "name": "Linea",
+      "symbol": "ETH",
+      "chain_id": 59144,
+      "network_id": 59144,
+      "explorers": [
+        {
+          "name": "Lineascan",
+          "url": "https://lineascan.build",
+          "api_url": "https://api.lineascan.build",
+          "api_key_required": true
+        }
+      ],
+      "rpc_endpoints": [
+        {
+          "url": "https://rpc.linea.build",
+          "name": "Public",
+          "priority": 1
+        }
+      ],
+      "features": {
+        "evm": true,
+        "zk_evm": true
+      }
+    },
+    "zksync": {
+      "name": "zkSync Era",
+      "symbol": "ETH",
+      "chain_id": 324,
+      "network_id": 324,
+      "explorers": [
+        {
+          "name": "zkSync Explorer",
+          "url": "https://explorer.zksync.io",
+          "api_url": "https://block-explorer-api.zksync.io",
+          "api_key_required": false
+        }
+      ],
+      "rpc_endpoints": [
+        {
+          "url": "https://mainnet.era.zksync.io",
+          "name": "Public",
+          "priority": 1
+        }
+      ],
+      "features": {
+        "evm": true,
+        "zk_rollup": true
+      }
+    },
+    "scroll": {
+      "name": "Scroll",
+      "symbol": "ETH",
+      "chain_id": 534352,
+      "network_id": 534352,
+      "explorers": [
+        {
+          "name": "Scroll Explorer",
+          "url": "https://scrollscan.com",
+          "api_url": "https://api.scrollscan.com",
+          "api_key_required": true
+        }
+      ],
+      "rpc_endpoints": [
+        {
+          "url": "https://rpc.scroll.io",
+          "name": "Public",
+          "priority": 1
+        }
+      ],
+      "features": {
+        "evm": true,
+        "zk_rollup": true
+      }
+    }
+  },
+  "testnets": {
+    "ethereum_goerli": {
+      "name": "Ethereum Goerli",
+      "symbol": "ETH",
+      "chain_id": 5,
+      "enabled": true,
+      "faucets": ["https://goerli-faucet.io"]
+    },
+    "ethereum_sepolia": {
+      "name": "Ethereum Sepolia",
+      "symbol": "ETH",
+      "chain_id": 11155111,
+      "enabled": true,
+      "faucets": ["https://sepolia-faucet.io"]
+    },
+    "polygon_mumbai": {
+      "name": "Polygon Mumbai",
+      "symbol": "MATIC",
+      "chain_id": 80001,
+      "enabled": true,
+      "faucets": ["https://faucet.polygon.technology"]
+    },
+    "bsc_testnet": {
+      "name": "BNB Chain Testnet",
+      "symbol": "BNB",
+      "chain_id": 97,
+      "enabled": true,
+      "faucets": ["https://testnet.bnbchain.org/faucet-smart-contract"]
+    },
+    "avalanche_fuji": {
+      "name": "Avalanche Fuji",
+      "symbol": "AVAX",
+      "chain_id": 43113,
+      "enabled": true,
+      "faucets": ["https://faucet.avax-test.network"]
+    },
+    "arbitrum_goerli": {
+      "name": "Arbitrum Goerli",
+      "symbol": "ETH",
+      "chain_id": 421613,
+      "enabled": true
+    },
+    "optimism_goerli": {
+      "name": "Optimism Goerli",
+      "symbol": "ETH",
+      "chain_id": 420,
+      "enabled": true
+    },
+    "base_sepolia": {
+      "name": "Base Sepolia",
+      "symbol": "ETH",
+      "chain_id": 84532,
+      "enabled": true
+    },
+    "linea_sepolia": {
+      "name": "Linea Sepolia",
+      "symbol": "ETH",
+      "chain_id": 59140,
+      "enabled": true
+    }
+  },
+  "token_standards": {
+    "ERC20": {
+      "name": "ERC-20",
+      "description": "Fungible Token Standard",
+      "interface_id": "0x36372b07",
+      "required_functions": ["balanceOf", "transfer", "allowance", "approve", "transferFrom", "totalSupply", "decimals", "symbol", "name"],
+      "optional_functions": ["mint", "burn", "pausable"],
+      "events": ["Transfer", "Approval"]
+    },
+    "ERC721": {
+      "name": "ERC-721",
+      "description": "Non-Fungible Token Standard",
+      "interface_id": "0x80ac58cd",
+      "required_functions": ["balanceOf", "ownerOf", "safeTransferFrom", "transferFrom", "approve", "setApprovalForAll", "getApproved"],
+      "optional_functions": ["mint", "burn", "metadata"],
+      "events": ["Transfer", "Approval", "ApprovalForAll"]
+    },
+    "ERC1155": {
+      "name": "ERC-1155",
+      "description": "Multi Token Standard",
+      "interface_id": "0xd9b67a26",
+      "required_functions": ["balanceOf", "safeTransferFrom", "safeBatchTransferFrom"],
+      "optional_functions": ["mint", "burn"],
+      "events": ["TransferSingle", "TransferBatch", "ApprovalForAll"]
+    },
+    "ERC165": {
+      "name": "ERC-165",
+      "description": "Interface Detection Standard",
+      "interface_id": "0x01ffc9a7",
+      "required_functions": ["supportsInterface"],
+      "events": []
+    }
+  },
+  "common_contracts": {
+    "openzeppelin": {
+      "version": "5.0.0",
+      "contracts": [
+        "Ownable",
+        "AccessControl",
+        "Pausable",
+        "ReentrancyGuard",
+        "ERC20",
+        "ERC721",
+        "ERC1155",
+        "IERC20",
+        "IERC721",
+        "IERC1155",
+        "SafeERC20",
+        "Address",
+        "Context"
+      ]
+    },
+    "gnosis_safe": {
+      "version": "1.4.0",
+      "contracts": [
+        "GnosisSafe",
+        "GnosisSafeProxy",
+        "GnosisSafeProxyFactory",
+        "MultiSend",
+        "MultiSendCallOnly",
+        "SignMessageLib"
+      ]
+    },
+    "uniswap": {
+      "version": "2.0.0",
+      "contracts": [
+        "UniswapV2Factory",
+        "UniswapV2Pair",
+        "UniswapV2Router02"
+      ]
+    }
+  }
+}

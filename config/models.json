@@ -1,0 +1,933 @@
+{
+  "models": {
+    "contract": {
+      "name": "Contract",
+      "description": "Smart contract data model",
+      "fields": {
+        "address": {
+          "type": "string",
+          "required": true,
+          "pattern": "^0x[a-fA-F0-9]{40}$",
+          "description": "Contract Ethereum address"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Contract name"
+        },
+        "symbol": {
+          "type": "string",
+          "required": false,
+          "description": "Token symbol if ERC-20"
+        },
+        "network": {
+          "type": "string",
+          "required": true,
+          "description": "Blockchain network"
+        },
+        "chain_id": {
+          "type": "integer",
+          "required": true,
+          "description": "Ethereum chain ID"
+        },
+        "compiler": {
+          "type": "string",
+          "required": false,
+          "description": "Solidity compiler version"
+        },
+        "optimization": {
+          "type": "boolean",
+          "required": false,
+          "default": true,
+          "description": "Optimization enabled"
+        },
+        "runs": {
+          "type": "integer",
+          "required": false,
+          "description": "Optimization runs"
+        },
+        "license": {
+          "type": "string",
+          "required": false,
+          "description": "License type"
+        },
+        "source_code": {
+          "type": "text",
+          "required": false,
+          "description": "Contract Solidity source code"
+        },
+        "abi": {
+          "type": "json",
+          "required": false,
+          "description": "Contract ABI"
+        },
+        "bytecode": {
+          "type": "string",
+          "required": false,
+          "description": "Deployed bytecode"
+        },
+        "deployed_at": {
+          "type": "datetime",
+          "required": false,
+          "description": "Deployment timestamp"
+        },
+        "creator": {
+          "type": "string",
+          "required": false,
+          "description": "Deployer address"
+        },
+        "tx_hash": {
+          "type": "string",
+          "required": false,
+          "description": "Deployment transaction hash"
+        },
+        "verified": {
+          "type": "boolean",
+          "required": false,
+          "default": false,
+          "description": "Source code verified"
+        }
+      }
+    },
+    "audit": {
+      "name": "Audit",
+      "description": "Security audit data model",
+      "fields": {
+        "audit_id": {
+          "type": "string",
+          "required": true,
+          "unique": true,
+          "description": "Unique audit identifier"
+        },
+        "title": {
+          "type": "string",
+          "required": true,
+          "max_length": 200,
+          "description": "Audit title"
+        },
+        "description": {
+          "type": "text",
+          "required": false,
+          "description": "Audit description"
+        },
+        "status": {
+          "type": "enum",
+          "required": true,
+          "values": ["pending", "in_progress", "completed", "cancelled", "failed"],
+          "default": "pending"
+        },
+        "priority": {
+          "type": "enum",
+          "required": true,
+          "values": ["P0", "P1", "P2", "P3", "P4"],
+          "default": "P2"
+        },
+        "contracts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "model": "contract"
+          },
+          "description": "Contracts to audit"
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "model": "finding"
+          },
+          "description": "Audit findings"
+        },
+        "auditor": {
+          "type": "string",
+          "required": false,
+          "description": "Assigned auditor"
+        },
+        "requestor": {
+          "type": "string",
+          "required": false,
+          "description": "Audit requestor"
+        },
+        "start_date": {
+          "type": "datetime",
+          "required": false,
+          "description": "Audit start date"
+        },
+        "end_date": {
+          "type": "datetime",
+          "required": false,
+          "description": "Audit end date"
+        },
+        "scope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Audit scope"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Security rules to check"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Audit tags"
+        },
+        "metadata": {
+          "type": "object",
+          "required": false,
+          "description": "Additional metadata"
+        },
+        "created_at": {
+          "type": "datetime",
+          "required": true,
+          "auto_now": true
+        },
+        "updated_at": {
+          "type": "datetime",
+          "required": true,
+          "auto_now_add": true
+        }
+      }
+    },
+    "finding": {
+      "name": "Finding",
+      "description": "Vulnerability finding data model",
+      "fields": {
+        "finding_id": {
+          "type": "string",
+          "required": true,
+          "unique": true,
+          "description": "Unique finding identifier"
+        },
+        "audit_id": {
+          "type": "string",
+          "required": true,
+          "description": "Associated audit ID"
+        },
+        "vulnerability_type": {
+          "type": "string",
+          "required": true,
+          "description": "Vulnerability type"
+        },
+        "severity": {
+          "type": "enum",
+          "required": true,
+          "values": ["critical", "high", "medium", "low", "info"],
+          "description": "Finding severity"
+        },
+        "confidence": {
+          "type": "enum",
+          "required": true,
+          "values": ["confirmed", "likely", "possible", "uncertain"],
+          "default": "possible"
+        },
+        "title": {
+          "type": "string",
+          "required": true,
+          "max_length": 200,
+          "description": "Finding title"
+        },
+        "description": {
+          "type": "text",
+          "required": true,
+          "description": "Finding description"
+        },
+        "impact": {
+          "type": "text",
+          "required": false,
+          "description": "Security impact"
+        },
+        "recommendation": {
+          "type": "text",
+          "required": false,
+          "description": "Fix recommendation"
+        },
+        "location": {
+          "type": "object",
+          "required": true,
+          "description": "Code location",
+          "fields": {
+            "file": {
+              "type": "string",
+              "required": true
+            },
+            "line": {
+              "type": "integer",
+              "required": false
+            },
+            "function": {
+              "type": "string",
+              "required": false
+            },
+            "contract": {
+              "type": "string",
+              "required": false
+            }
+          }
+        },
+        "cvss_score": {
+          "type": "float",
+          "required": false,
+          "min": 0,
+          "max": 10,
+          "description": "CVSS score"
+        },
+        "cvss_vector": {
+          "type": "string",
+          "required": false,
+          "description": "CVSS vector string"
+        },
+        "cwe_id": {
+          "type": "string",
+          "required": false,
+          "description": "CWE identifier"
+        },
+        "cve_id": {
+          "type": "string",
+          "required": false,
+          "description": "CVE identifier"
+        },
+        "status": {
+          "type": "enum",
+          "required": true,
+          "values": ["open", "confirmed", "fixed", "accepted", "false_positive"],
+          "default": "open"
+        },
+        "false_positive": {
+          "type": "boolean",
+          "required": false,
+          "default": false
+        },
+        "verified": {
+          "type": "boolean",
+          "required": false,
+          "default": false
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Finding notes"
+        },
+        "evidence": {
+          "type": "object",
+          "required": false,
+          "description": "Evidence data"
+        },
+        "created_at": {
+          "type": "datetime",
+          "required": true,
+          "auto_now": true
+        },
+        "updated_at": {
+          "type": "datetime",
+          "required": true,
+          "auto_now_add": true
+        }
+      }
+    },
+    "vulnerability": {
+      "name": "Vulnerability",
+      "description": "Vulnerability definition model",
+      "fields": {
+        "vuln_id": {
+          "type": "string",
+          "required": true,
+          "unique": true,
+          "description": "Vulnerability identifier"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Vulnerability name"
+        },
+        "type": {
+          "type": "string",
+          "required": true,
+          "description": "Vulnerability type"
+        },
+        "category": {
+          "type": "string",
+          "required": true,
+          "description": "Vulnerability category"
+        },
+        "severity": {
+          "type": "enum",
+          "required": true,
+          "values": ["critical", "high", "medium", "low", "info"]
+        },
+        "description": {
+          "type": "text",
+          "required": true,
+          "description": "Vulnerability description"
+        },
+        "impact": {
+          "type": "text",
+          "required": false,
+          "description": "Security impact"
+        },
+        "recommendation": {
+          "type": "text",
+          "required": false,
+          "description": "Fix recommendation"
+        },
+        "cwe_id": {
+          "type": "string",
+          "required": false,
+          "description": "CWE identifier"
+        },
+        "cve_id": {
+          "type": "string",
+          "required": false,
+          "description": "CVE identifier"
+        },
+        "patterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Detection patterns"
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Reference links"
+        },
+        "false_positives": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Known false positive patterns"
+        },
+        "enabled": {
+          "type": "boolean",
+          "required": false,
+          "default": true
+        },
+        "created_at": {
+          "type": "datetime",
+          "required": true
+        },
+        "updated_at": {
+          "type": "datetime",
+          "required": true
+        }
+      }
+    },
+    "scan": {
+      "name": "Scan",
+      "description": "Contract scan data model",
+      "fields": {
+        "scan_id": {
+          "type": "string",
+          "required": true,
+          "unique": true,
+          "description": "Unique scan identifier"
+        },
+        "contract_address": {
+          "type": "string",
+          "required": true,
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "network": {
+          "type": "string",
+          "required": true,
+          "description": "Blockchain network"
+        },
+        "scan_type": {
+          "type": "enum",
+          "required": true,
+          "values": ["quick", "full", "custom"],
+          "default": "full"
+        },
+        "status": {
+          "type": "enum",
+          "required": true,
+          "values": ["pending", "running", "completed", "failed", "cancelled"],
+          "default": "pending"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Rules to apply"
+        },
+        "results": {
+          "type": "object",
+          "required": false,
+          "description": "Scan results"
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Vulnerabilities found"
+        },
+        "started_at": {
+          "type": "datetime",
+          "required": false
+        },
+        "completed_at": {
+          "type": "datetime",
+          "required": false
+        },
+        "duration": {
+          "type": "float",
+          "required": false,
+          "description": "Scan duration in seconds"
+        },
+        "scanner": {
+          "type": "string",
+          "required": false,
+          "description": "Scanner identifier"
+        },
+        "error": {
+          "type": "string",
+          "required": false,
+          "description": "Error message if failed"
+        },
+        "created_at": {
+          "type": "datetime",
+          "required": true
+        },
+        "updated_at": {
+          "type": "datetime",
+          "required": true
+        }
+      }
+    },
+    "report": {
+      "name": "Report",
+      "description": "Audit report data model",
+      "fields": {
+        "report_id": {
+          "type": "string",
+          "required": true,
+          "unique": true
+        },
+        "audit_id": {
+          "type": "string",
+          "required": true
+        },
+        "title": {
+          "type": "string",
+          "required": true
+        },
+        "format": {
+          "type": "enum",
+          "required": true,
+          "values": ["json", "html", "pdf", "markdown", "csv"]
+        },
+        "status": {
+          "type": "enum",
+          "required": true,
+          "values": ["pending", "generating", "completed", "failed"]
+        },
+        "content": {
+          "type": "text",
+          "required": false
+        },
+        "file_path": {
+          "type": "string",
+          "required": false
+        },
+        "file_size": {
+          "type": "integer",
+          "required": false
+        },
+        "download_count": {
+          "type": "integer",
+          "required": false,
+          "default": 0
+        },
+        "created_at": {
+          "type": "datetime",
+          "required": true
+        },
+        "updated_at": {
+          "type": "datetime",
+          "required": true
+        }
+      }
+    },
+    "user": {
+      "name": "User",
+      "description": "User account data model",
+      "fields": {
+        "user_id": {
+          "type": "string",
+          "required": true,
+          "unique": true
+        },
+        "email": {
+          "type": "string",
+          "required": true,
+          "unique": true
+        },
+        "username": {
+          "type": "string",
+          "required": true,
+          "unique": true
+        },
+        "password_hash": {
+          "type": "string",
+          "required": true
+        },
+        "role": {
+          "type": "enum",
+          "required": true,
+          "values": ["admin", "auditor", "user", "viewer"],
+          "default": "user"
+        },
+        "status": {
+          "type": "enum",
+          "required": true,
+          "values": ["active", "inactive", "suspended"],
+          "default": "active"
+        },
+        "first_name": {
+          "type": "string",
+          "required": false
+        },
+        "last_name": {
+          "type": "string",
+          "required": false
+        },
+        "organization": {
+          "type": "string",
+          "required": false
+        },
+        "last_login": {
+          "type": "datetime",
+          "required": false
+        },
+        "login_count": {
+          "type": "integer",
+          "required": false,
+          "default": 0
+        },
+        "failed_attempts": {
+          "type": "integer",
+          "required": false,
+          "default": 0
+        },
+        "locked_until": {
+          "type": "datetime",
+          "required": false
+        },
+        "created_at": {
+          "type": "datetime",
+          "required": true
+        },
+        "updated_at": {
+          "type": "datetime",
+          "required": true
+        }
+      }
+    },
+    "session": {
+      "name": "Session",
+      "description": "User session data model",
+      "fields": {
+        "session_id": {
+          "type": "string",
+          "required": true,
+          "unique": true
+        },
+        "user_id": {
+          "type": "string",
+          "required": true
+        },
+        "token": {
+          "type": "string",
+          "required": true,
+          "unique": true
+        },
+        "refresh_token": {
+          "type": "string",
+          "required": false,
+          "unique": true
+        },
+        "ip_address": {
+          "type": "string",
+          "required": false
+        },
+        "user_agent": {
+          "type": "string",
+          "required": false
+        },
+        "status": {
+          "type": "enum",
+          "required": true,
+          "values": ["active", "expired", "revoked"],
+          "default": "active"
+        },
+        "expires_at": {
+          "type": "datetime",
+          "required": true
+        },
+        "created_at": {
+          "type": "datetime",
+          "required": true
+        },
+        "updated_at": {
+          "type": "datetime",
+          "required": true
+        }
+      }
+    },
+    "hunter": {
+      "name": "Hunter",
+      "description": "Threat hunter data model",
+      "fields": {
+        "hunt_id": {
+          "type": "string",
+          "required": true,
+          "unique": true
+        },
+        "title": {
+          "type": "string",
+          "required": true
+        },
+        "description": {
+          "type": "text",
+          "required": false
+        },
+        "status": {
+          "type": "enum",
+          "values": ["pending", "running", "completed", "cancelled"],
+          "default": "pending"
+        },
+        "target_addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "target_networks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "IOCs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "threat_actors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "TTPs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "hunter": {
+          "type": "string",
+          "required": false
+        },
+        "start_time": {
+          "type": "datetime",
+          "required": false
+        },
+        "end_time": {
+          "type": "datetime",
+          "required": false
+        },
+        "created_at": {
+          "type": "datetime",
+          "required": true
+        },
+        "updated_at": {
+          "type": "datetime",
+          "required": true
+        }
+      }
+    },
+    "rule": {
+      "name": "Rule",
+      "description": "Security rule data model",
+      "fields": {
+        "rule_id": {
+          "type": "string",
+          "required": true,
+          "unique": true
+        },
+        "name": {
+          "type": "string",
+          "required": true
+        },
+        "type": {
+          "type": "string",
+          "required": true
+        },
+        "severity": {
+          "type": "enum",
+          "values": ["critical", "high", "medium", "low", "info"],
+          "required": true
+        },
+        "category": {
+          "type": "string",
+          "required": true
+        },
+        "description": {
+          "type": "text",
+          "required": true
+        },
+        "pattern": {
+          "type": "string",
+          "required": false
+        },
+        "regex": {
+          "type": "string",
+          "required": false
+        },
+        "ast_pattern": {
+          "type": "object",
+          "required": false
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "priority": {
+          "type": "integer",
+          "default": 0
+        },
+        "created_at": {
+          "type": "datetime",
+          "required": true
+        },
+        "updated_at": {
+          "type": "datetime",
+          "required": true
+        }
+      }
+    }
+  },
+  "relationships": {
+    "audit_contracts": {
+      "type": "many_to_many",
+      "source": "audit",
+      "target": "contract"
+    },
+    "audit_findings": {
+      "type": "one_to_many",
+      "source": "audit",
+      "target": "finding"
+    },
+    "scan_findings": {
+      "type": "one_to_many",
+      "source": "scan",
+      "target": "finding"
+    },
+    "report_audit": {
+      "type": "one_to_one",
+      "source": "report",
+      "target": "audit"
+    },
+    "user_audits": {
+      "type": "one_to_many",
+      "source": "user",
+      "target": "audit"
+    },
+    "session_user": {
+      "type": "many_to_one",
+      "source": "session",
+      "target": "user"
+    }
+  },
+  "indexes": {
+    "contract_address": {
+      "fields": ["address", "network"],
+      "unique": true
+    },
+    "audit_status": {
+      "fields": ["status"],
+      "unique": false
+    },
+    "finding_audit": {
+      "fields": ["audit_id"],
+      "unique": false
+    },
+    "finding_severity": {
+      "fields": ["severity"],
+      "unique": false
+    },
+    "scan_contract": {
+      "fields": ["contract_address", "network"],
+      "unique": false
+    },
+    "user_email": {
+      "fields": ["email"],
+      "unique": true
+    },
+    "session_token": {
+      "fields": ["token"],
+      "unique": true
+    }
+  },
+  "validations": {
+    "audit": {
+      "title": {
+        "min_length": 3,
+        "max_length": 200
+      },
+      "status": {
+        "allowed_values": ["pending", "in_progress", "completed", "cancelled", "failed"]
+      }
+    },
+    "finding": {
+      "title": {
+        "min_length": 3,
+        "max_length": 200
+      },
+      "cvss_score": {
+        "min": 0,
+        "max": 10
+      }
+    },
+    "contract": {
+      "address": {
+        "pattern": "^0x[a-fA-F0-9]{40}$"
+      }
+    }
+  }
+}

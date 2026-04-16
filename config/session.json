@@ -1,0 +1,204 @@
+{
+  "session": {
+    "name": "Solidify Session",
+    "version": "1.0.0",
+    "description": "Secure session management for Solidify"
+  },
+  "session_types": {
+    "default": {
+      "name": "Default Session",
+      "duration": 3600,
+      "refresh_enabled": true,
+      "refresh_after": 1800,
+      "max_concurrent": 5
+    },
+    "audit": {
+      "name": "Audit Session",
+      "duration": 14400,
+      "refresh_enabled": true,
+      "refresh_after": 7200,
+      "max_concurrent": 3,
+      "require_mfa": false
+    },
+    "api": {
+      "name": "API Session",
+      "duration": 3600,
+      "refresh_enabled": true,
+      "refresh_after": 1800,
+      "max_concurrent": 10,
+      "require_mfa": false
+    },
+    "admin": {
+      "name": "Admin Session",
+      "duration": 1800,
+      "refresh_enabled": false,
+      "max_concurrent": 1,
+      "require_mfa": true
+    },
+    "viewer": {
+      "name": "Viewer Session",
+      "duration": 7200,
+      "refresh_enabled": false,
+      "max_concurrent": 1
+    }
+  },
+  "security": {
+    "algorithm": "HS256",
+    "token_length": 32,
+    "refresh_token_length": 64,
+    "encryption": {
+      "enabled": false,
+      "algorithm": "AES-256-GCM"
+    },
+    "csrf_protection": {
+      "enabled": true,
+      "token_length": 32
+    },
+    "mfa": {
+      "enabled": false,
+      "methods": ["totp", "email"],
+      "backup_codes": 10
+    },
+    "rate_limiting": {
+      "login_attempts": 5,
+      "lockout_duration": 900,
+      "ip_whitelist": [],
+      "ip_blacklist": []
+    }
+  },
+  "cookie": {
+    "name": "solidify_session",
+    "http_only": true,
+    "secure": true,
+    "same_site": "lax",
+    "path": "/",
+    "domain": "",
+    "max_age": 3600
+  },
+  "storage": {
+    "type": "database",
+    "redis": {
+      "enabled": false,
+      "host": "localhost",
+      "port": 6379,
+      "db": 0,
+      "key_prefix": "session:"
+    },
+    "memcached": {
+      "enabled": false,
+      "servers": ["localhost:11211"]
+    },
+    "database": {
+      "enabled": true,
+      "cleanup_interval": 3600,
+      "max_idle_time": 600
+    }
+  },
+  "validation": {
+    "validate_on_request": true,
+    "validate_ip": true,
+    "validate_user_agent": true,
+    "validate_fingerprint": false,
+    "check_revocation": true,
+    "check_expiration": true
+  },
+  "events": {
+    "login": {
+      "enabled": true,
+      "log_level": "info"
+    },
+    "logout": {
+      "enabled": true,
+      "log_level": "info"
+    },
+    "refresh": {
+      "enabled": true,
+      "log_level": "debug"
+    },
+    "expire": {
+      "enabled": true,
+      "log_level": "info"
+    },
+    "revoke": {
+      "enabled": true,
+      "log_level": "warning"
+    },
+    "concurrent_login": {
+      "enabled": true,
+      "log_level": "warning"
+    },
+    "failed_login": {
+      "enabled": true,
+      "log_level": "warning"
+    }
+  },
+  "cleanup": {
+    "enabled": true,
+    "schedule": "0 * * * *",
+    "max_age": 86400,
+    "max_sessions": 10000,
+    "gc_probability": 10
+  },
+  "ip_validation": {
+    "enabled": true,
+    "check_subnet": false,
+    "subnet_mask": 24,
+    "trust_proxies": ["127.0.0.1", "10.0.0.0/8"]
+  },
+  "user_agent_validation": {
+    "enabled": false,
+    "required": false,
+    "min_length": 10
+  },
+  "fingerprint": {
+    "enabled": false,
+    "hash_algorithm": "sha256"
+  },
+  "rotation": {
+    "enabled": true,
+    "rotate_on_refresh": true,
+    "rotate_on_login": false,
+    "rotate_on_ip_change": true,
+    "rotate_on_user_agent_change": true
+  },
+  "revocation": {
+    "enabled": true,
+    "check_on_each_request": false,
+    "revoked_sessions_ttl": 3600
+  },
+  "concurrent_sessions": {
+    "enabled": true,
+    "max_per_user": 5,
+    "action": "revoke_oldest"
+  },
+  "absolute_timeout": {
+    "enabled": true,
+    "max_duration": 2592000
+  },
+  "idle_timeout": {
+    "enabled": true,
+    "max_idle": 1800
+  },
+  "remember_me": {
+    "enabled": true,
+    "duration": 2592000,
+    "max_devices": 3
+  },
+  "impersonation": {
+    "enabled": false,
+    "admin_only": true,
+    "log_all_actions": true
+  },
+  "auditing": {
+    "enabled": true,
+    "log_all": true,
+    "log_data": ["session_id", "user_id", "ip_address", "user_agent", "timestamp"],
+    "retention_days": 90
+  },
+  "metrics": {
+    "enabled": true,
+    "collect": ["active_sessions", "new_sessions", "expired_sessions", "concurrent_logins"],
+    "export": true,
+    "interval": 60
+  }
+}
