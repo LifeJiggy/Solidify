@@ -66,6 +66,11 @@ def cmd_hunt(args: argparse.Namespace) -> None:
 
 async def cmd_hunt_advanced(args: argparse.Namespace) -> None:
     """Advanced hunt command with URL, model, task and streaming support"""
+    import sys
+    import io
+
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+
     from providers import create_unified_provider, ProviderType
     from providers.streaming import create_streaming_processor
     from providers.logging import create_logger
@@ -93,7 +98,7 @@ async def cmd_hunt_advanced(args: argparse.Namespace) -> None:
     contract_code = ""
 
     if args.url:
-        print(f"  🌐 Fetching content from {args.url}...")
+        print(f"  [FETCHING] Fetching content from {args.url}...")
         try:
             import aiohttp
 
@@ -103,34 +108,34 @@ async def cmd_hunt_advanced(args: argparse.Namespace) -> None:
                 ) as resp:
                     if resp.status == 200:
                         contract_code = await resp.text()
-                        print(f"  ✅ Fetched {len(contract_code)} characters")
+                        print(f"  [OK] Fetched {len(contract_code)} characters")
                     else:
-                        print(f"  ❌ Failed to fetch: HTTP {resp.status}")
+                        print(f"  [ERROR] Failed to fetch: HTTP {resp.status}")
                         return
         except Exception as e:
-            print(f"  ❌ Error fetching URL: {e}")
+            print(f"  [ERROR] Error fetching URL: {e}")
             return
     elif args.file:
-        print(f"  📄 Reading file {args.file}...")
+        print(f"  [READING] Reading file {args.file}...")
         try:
             with open(args.file, "r", encoding="utf-8") as f:
                 contract_code = f.read()
-            print(f"  ✅ Read {len(contract_code)} characters")
+            print(f"  [OK] Read {len(contract_code)} characters")
         except Exception as e:
-            print(f"  ❌ Error reading file: {e}")
+            print(f"  [ERROR] Error reading file: {e}")
             return
     elif args.code:
         contract_code = args.code
-        print(f"  📝 Using provided code ({len(contract_code)} chars)")
+        print(f"  [OK] Using provided code ({len(contract_code)} chars)")
 
     if not contract_code:
-        print("  ❌ No contract code provided")
+        print("  [ERROR] No contract code provided")
         return
 
-    stream = args.stream if hasattr(args, "stream") else True
+    stream = not args.no_stream
 
     if stream:
-        print(f"\n  🔄 Streaming enabled - showing live output\n")
+        print(f"\n  >> STREAMING MODE - Live output\n")
 
         stream_logger = create_logger()
         stream_logger.log_start(provider_name, model, 1)
@@ -250,9 +255,7 @@ Contract Code:
 
 Provide a detailed security analysis focusing ONLY on CRITICAL and HIGH severity vulnerabilities."""
 
-            import asyncio
-
-            response = asyncio.run(provider.generate(prompt))
+            response = await provider.generate(prompt)
 
             if hasattr(response, "content"):
                 print(response.content)
@@ -262,7 +265,7 @@ Provide a detailed security analysis focusing ONLY on CRITICAL and HIGH severity
                 print(response)
 
         except Exception as e:
-            print(f"  ❌ Error: {e}")
+            print(f"  [ERROR] {e}")
 
 
 def cmd_scan(args: argparse.Namespace) -> None:
