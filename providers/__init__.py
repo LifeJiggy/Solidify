@@ -168,7 +168,7 @@ from .streaming import (
     SSEParser,
 )
 
-from .logging import (
+from .stream_logging import (
     StreamLogger,
     StreamMetricsLogger,
     ProviderStreamLogger,

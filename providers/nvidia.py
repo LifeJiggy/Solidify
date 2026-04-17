@@ -599,6 +599,8 @@ class NvidiaProvider:
     ) -> NvidiaResponse:
         """Generate response from prompt"""
         try:
+            import httpx
+
             self.total_requests += 1
 
             model = model or self.config.model
@@ -622,60 +624,41 @@ class NvidiaProvider:
 
             payload.update(kwargs)
 
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
+            async with httpx.AsyncClient(timeout=self.config.timeout) as client:
+                response = await client.post(
                     f"{self.config.base_url}/chat/completions",
                     json=payload,
                     headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=self.config.timeout),
-                ) as resp:
-                    if resp.status == 429:
-                        self.rate_limit_hits += 1
-                        retry_after = resp.headers.get("Retry-After", "60")
-                        logger.warning(
-                            f"NVIDIA rate limited. Retry after: {retry_after}s"
-                        )
-                        return NvidiaResponse(
-                            content="",
-                            model=model,
-                            finish_reason="rate_limited",
-                            metadata={"retry_after": retry_after},
-                        )
+                )
 
-                    data = await resp.json()
+                if response.status_code == 429:
+                    self.rate_limit_hits += 1
+                    return NvidiaResponse(
+                        content="",
+                        model=model,
+                        finish_reason="rate_limited",
+                    )
 
-                    if "choices" in data and len(data["choices"]) > 0:
-                        return NvidiaResponse(
-                            content=data["choices"][0]["message"]["content"],
-                            model=model,
-                            usage=data.get("usage", {}),
-                            finish_reason=data["choices"][0].get(
-                                "finish_reason", "stop"
-                            ),
-                            raw_response=data,
-                        )
-                    else:
-                        self.failed_requests += 1
-                        return NvidiaResponse(
-                            content="",
-                            model=model,
-                            finish_reason="error",
-                            metadata=data,
-                        )
-        except asyncio.TimeoutError:
-            self.failed_requests += 1
-            logger.error(f"NVIDIA timeout after {self.config.timeout}s")
-            return NvidiaResponse(
-                content="", model=model or self.config.model, finish_reason="timeout"
-            )
+                data = response.json()
+
+                if "choices" in data and len(data["choices"]) > 0:
+                    return NvidiaResponse(
+                        content=data["choices"][0]["message"]["content"],
+                        model=model,
+                        usage=data.get("usage", {}),
+                        finish_reason=data["choices"][0].get("finish_reason", "stop"),
+                        raw_response=data,
+                    )
+                else:
+                    self.failed_requests += 1
+                    return NvidiaResponse(
+                        content="", model=model, finish_reason="error"
+                    )
         except Exception as e:
             self.failed_requests += 1
             logger.error(f"NVIDIA generate error: {e}")
             return NvidiaResponse(
-                content="",
-                model=model or self.config.model,
-                finish_reason="error",
-                metadata={"error": str(e)},
+                content="", model=model or self.config.model, finish_reason="error"
             )
 
     async def generate_stream(self, prompt: str, **kwargs) -> AsyncIterator[str]:
@@ -684,7 +667,7 @@ class NvidiaProvider:
         temperature = kwargs.get("temperature", self.config.temperature)
 
         try:
-            import aiohttp
+            import httpx
 
             headers = {
                 "Authorization": f"Bearer {self.config.api_key}",
@@ -698,20 +681,19 @@ class NvidiaProvider:
                 "stream": True,
             }
 
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
+            async with httpx.AsyncClient(timeout=self.config.timeout) as client:
+                async with client.stream(
+                    "POST",
                     f"{self.config.base_url}/chat/completions",
                     json=payload,
                     headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=self.config.timeout),
                 ) as resp:
-                    if resp.status != 200:
-                        error = await resp.text()
+                    if resp.status_code != 200:
+                        error = resp.text
                         yield f'{{"error": "{error}"}}'
                         return
 
-                    async for line in resp.content:
-                        line = line.decode("utf-8")
+                    async for line in resp.aiter_lines():
                         if line.startswith("data: "):
                             if line.strip() == "data: [DONE]":
                                 break
@@ -730,7 +712,7 @@ class NvidiaProvider:
     ) -> List[List[float]]:
         """Generate embeddings for vulnerability pattern matching"""
         try:
-            import aiohttp
+            import httpx
 
             headers = {
                 "Authorization": f"Bearer {self.config.api_key}",
@@ -739,12 +721,12 @@ class NvidiaProvider:
 
             payload = {"model": model, "input": texts}
 
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
                     f"{self.config.base_url}/embeddings", json=payload, headers=headers
-                ) as resp:
-                    data = await resp.json()
-                    return [item["embedding"] for item in data.get("data", [])]
+                )
+                data = response.json()
+                return [item["embedding"] for item in data.get("data", [])]
         except Exception as e:
             logger.error(f"NVIDIA embed error: {e}")
             return []

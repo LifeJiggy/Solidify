@@ -79,27 +79,368 @@ class ReentrancyDetector(BaseDetector):
         self, source_code: str, contract_name: str
     ) -> List[VulnerabilityFinding]:
         findings = []
-        functions = self._extract_functions(source_code)
-        external_calls = self._find_external_calls(source_code)
-        state_modifications = self._find_state_modifications(source_code)
+        start_time = time.perf_counter()
 
-        for func in functions:
-            func_calls = self._get_function_external_calls(func, external_calls)
-            func_state_mods = self._get_function_state_mods(
-                func, state_modifications
-            )
+        # Preprocess contract
+        normalized_code = self._normalize_code(source_code)
+        function_boundaries = self._map_function_boundaries(normalized_code)
+        storage_writes = self._extract_storage_writes(normalized_code)
+        external_calls = self._extract_external_calls(normalized_code)
+        guard_annotations = self._find_reentrancy_guards(normalized_code)
+        ceip_violations = self._analyze_checks_effects_interactions(
+            normalized_code, function_boundaries
+        )
+
+        logger.debug(
+            f"Reentrancy analysis: {len(function_boundaries)} functions, {len(external_calls)} external calls, {len(storage_writes)} storage writes"
+        )
+
+        # Phase 1: Classic Reentrancy Detection
+        for func_name, func_bounds in function_boundaries.items():
+            func_body = normalized_code[func_bounds["start"] : func_bounds["end"]]
+            func_calls = [
+                c
+                for c in external_calls
+                if func_bounds["start"] <= c["offset"] <= func_bounds["end"]
+            ]
+            func_writes = [
+                w
+                for w in storage_writes
+                if func_bounds["start"] <= w["offset"] <= func_bounds["end"]
+            ]
+
+            if not func_calls or not func_writes:
+                continue
 
             for call in func_calls:
-                if self._is_reentrant_pattern(func, call, func_state_mods):
-                    finding = self._create_finding(
-                        source_code, func, call, func_state_mods
-                    )
-                    if finding:
-                        findings.append(finding)
+                # Check order: external call BEFORE state modification
+                write_after_call = any(
+                    w["offset"] > call["offset"] for w in func_writes
+                )
+                has_guard = any(g["function"] == func_name for g in guard_annotations)
 
-        read_only_findings = self._detect_read_only_reentrancy(
-            source_code, functions
+                if write_after_call and not has_guard:
+                    confidence = 0.95
+                    if call["type"] in ["call", "delegatecall"]:
+                        confidence = 0.98
+                    if call["sends_value"]:
+                        confidence = 1.0
+
+                    finding = VulnerabilityFinding(
+                        vuln_type=VulnerabilityType.REENTRANCY,
+                        severity=Severity.CRITICAL,
+                        title="Classic Reentrancy Vulnerability Detected",
+                        description=f"Function {func_name} performs external call before updating contract state. This allows an attacker to re-enter the function and drain funds.",
+                        location=self.get_match_location(call["match"]),
+                        code_snippet=self.extract_code_context(
+                            source_code, call["line_number"]
+                        ),
+                        fix_suggestion="Apply Checks-Effects-Interactions pattern: always update state variables BEFORE making external calls. Use OpenZeppelin ReentrancyGuard.",
+                        cvss_score=self.calculate_cvss(1.0, 1.0),
+                        confidence=confidence,
+                        detector=self.name,
+                        cwe_id="CWE-362",
+                        references=[
+                            "https://swcregistry.io/docs/SWC-107",
+                            "https://docs.openzeppelin.com/contracts/4.x/api/security#ReentrancyGuard",
+                        ],
+                        function_name=func_name,
+                        exploitability=1.0,
+                        impact_score=1.0,
+                        tags=["reentrancy", "classic", "swc-107"],
+                    )
+                    findings.append(finding)
+
+        # Phase 2: Cross Function Reentrancy
+        cross_function_findings = self._detect_cross_function_reentrancy(
+            normalized_code, function_boundaries, external_calls, storage_writes
         )
+        findings.extend(cross_function_findings)
+
+        # Phase 3: Read Only Reentrancy
+        readonly_findings = self._detect_read_only_reentrancy(
+            normalized_code, function_boundaries, external_calls
+        )
+        findings.extend(readonly_findings)
+
+        # Phase 4: ERC777 / ERC223 Hook Reentrancy
+        erc777_findings = self._detect_erc777_reentrancy(
+            normalized_code, function_boundaries
+        )
+        findings.extend(erc777_findings)
+
+        # Phase 5: CEIP Violations (Checks Effects Interactions Pattern)
+        for violation in ceip_violations:
+            if not any(f["location"]["line"] == violation["line"] for f in findings):
+                findings.append(
+                    VulnerabilityFinding(
+                        vuln_type=VulnerabilityType.REENTRANCY,
+                        severity=Severity.MEDIUM,
+                        title="Checks-Effects-Interactions Pattern Violation",
+                        description=f"Function {violation['function']} does not follow standard security pattern. External calls should be the last operation in a function.",
+                        location={"line": violation["line"]},
+                        code_snippet=self.extract_code_context(
+                            source_code, violation["line"]
+                        ),
+                        fix_suggestion="Reorder operations: validation checks first, state modifications second, external calls last.",
+                        cvss_score=self.calculate_cvss(0.4, 0.6),
+                        confidence=0.75,
+                        detector=self.name,
+                        cwe_id="CWE-666",
+                        tags=["ceip", "best-practice"],
+                    )
+                )
+
+        # Phase 6: Reentrancy Guard Usage Analysis
+        for func_name, func_bounds in function_boundaries.items():
+            uses_transfer = any(
+                c["type"] == "transfer"
+                for c in external_calls
+                if func_bounds["start"] <= c["offset"] <= func_bounds["end"]
+            )
+            has_guard = any(g["function"] == func_name for g in guard_annotations)
+            if uses_transfer and has_guard:
+                findings.append(
+                    VulnerabilityFinding(
+                        vuln_type=VulnerabilityType.REENTRANCY,
+                        severity=Severity.INFO,
+                        title="Unnecessary Reentrancy Guard Detected",
+                        description=f"Function {func_name} uses .transfer() which is limited to 2300 gas. ReentrancyGuard is not required here and wastes gas.",
+                        location=func_bounds,
+                        code_snippet="",
+                        fix_suggestion="Remove ReentrancyGuard modifier from functions that only use .transfer() or .send()",
+                        cvss_score=0.0,
+                        confidence=0.95,
+                        detector=self.name,
+                        tags=["gas-optimization", "best-practice"],
+                    )
+                )
+
+        execution_time = int((time.perf_counter() - start_time) * 1000)
+        logger.debug(
+            f"Reentrancy detection completed: {len(findings)} findings in {execution_time}ms"
+        )
+        return findings
+
+    def _normalize_code(self, code: str) -> str:
+        # Remove comments, normalize whitespace
+        code = re.sub(r"//.*?$", "", code, flags=re.MULTILINE)
+        code = re.sub(r"/\*.*?\*/", "", code, flags=re.DOTALL)
+        code = re.sub(r"\s+", " ", code)
+        return code.strip()
+
+    def _map_function_boundaries(self, code: str) -> Dict[str, Dict[str, Any]]:
+        boundaries = {}
+        func_regex = re.compile(r"\bfunction\s+(\w+)\s*\([^)]*\)\s*[^}]*\{")
+        for match in func_regex.finditer(code):
+            func_name = match.group(1)
+            start = match.end() - 1
+            brace_count = 1
+            end = start
+            while brace_count > 0 and end < len(code) - 1:
+                end += 1
+                if code[end] == "{":
+                    brace_count += 1
+                if code[end] == "}":
+                    brace_count -= 1
+            boundaries[func_name] = {
+                "start": match.start(),
+                "end": end,
+                "line_number": code[: match.start()].count("\n") + 1,
+            }
+        return boundaries
+
+    def _extract_storage_writes(self, code: str) -> List[Dict[str, Any]]:
+        writes = []
+        patterns = [
+            r"(\w+)\s*=\s*[^;]+;",
+            r"(\w+)\s*\+=\s*[^;]+;",
+            r"(\w+)\s*-=\s*[^;]+;",
+            r"(\w+)\s*\*\s*=\s*[^;]+;",
+            r"(\w+)\s*\/=\s*[^;]+;",
+            r"(\w+)\s*\+\+;",
+            r"(\w+)\s*--;",
+        ]
+        for pattern in patterns:
+            for match in re.finditer(pattern, code):
+                writes.append(
+                    {
+                        "variable": match.group(1),
+                        "offset": match.start(),
+                        "line_number": code[: match.start()].count("\n") + 1,
+                        "match": match,
+                    }
+                )
+        return writes
+
+    def _extract_external_calls(self, code: str) -> List[Dict[str, Any]]:
+        calls = []
+        call_patterns = [
+            (r"\.call\s*\{[^}]*\}\s*\(", "call", True),
+            (r"\.delegatecall\s*\{[^}]*\}\s*\(", "delegatecall", True),
+            (r"\.staticcall\s*\{[^}]*\}\s*\(", "staticcall", False),
+            (r"\.call\s*\(", "call", True),
+            (r"\.delegatecall\s*\(", "delegatecall", True),
+            (r"\.transfer\s*\(", "transfer", True),
+            (r"\.send\s*\(", "send", True),
+        ]
+        for pattern, call_type, sends_value in call_patterns:
+            for match in re.finditer(pattern, code):
+                calls.append(
+                    {
+                        "type": call_type,
+                        "sends_value": sends_value,
+                        "offset": match.start(),
+                        "line_number": code[: match.start()].count("\n") + 1,
+                        "match": match,
+                    }
+                )
+        return calls
+
+    def _find_reentrancy_guards(self, code: str) -> List[Dict[str, Any]]:
+        guards = []
+        patterns = [
+            r"modifier\s+nonReentrant",
+            r"nonReentrant\s*\(\s*\)",
+            r"ReentrancyGuard",
+            r"@openzeppelin/contracts/security/ReentrancyGuard\.sol",
+        ]
+        for pattern in patterns:
+            for match in re.finditer(pattern, code):
+                guards.append(
+                    {
+                        "offset": match.start(),
+                        "line_number": code[: match.start()].count("\n") + 1,
+                    }
+                )
+        return guards
+
+    def _analyze_checks_effects_interactions(
+        self, code: str, boundaries: Dict
+    ) -> List[Dict[str, Any]]:
+        violations = []
+        for func_name, bounds in boundaries.items():
+            func_body = code[bounds["start"] : bounds["end"]]
+            last_state_write = -1
+            first_external_call = len(func_body)
+
+            for write in self._extract_storage_writes(func_body):
+                if write["offset"] > last_state_write:
+                    last_state_write = write["offset"]
+
+            for call in self._extract_external_calls(func_body):
+                if call["offset"] < first_external_call:
+                    first_external_call = call["offset"]
+
+            if (
+                last_state_write != -1
+                and first_external_call != len(func_body)
+                and last_state_write > first_external_call
+            ):
+                violations.append(
+                    {
+                        "function": func_name,
+                        "line": bounds["line_number"],
+                        "last_write_offset": last_state_write,
+                        "first_call_offset": first_external_call,
+                    }
+                )
+        return violations
+
+    def _detect_cross_function_reentrancy(
+        self, code: str, boundaries: Dict, calls: List, writes: List
+    ) -> List[VulnerabilityFinding]:
+        findings = []
+        # Cross function reentrancy detection logic
+        # Tracks shared state variables modified across multiple functions
+        shared_state = {}
+        for write in writes:
+            var = write["variable"]
+            if var not in shared_state:
+                shared_state[var] = []
+            for func_name, bounds in boundaries.items():
+                if bounds["start"] <= write["offset"] <= bounds["end"]:
+                    shared_state[var].append(func_name)
+
+        for var, functions in shared_state.items():
+            if len(functions) > 1:
+                for func_name in functions:
+                    func_bounds = boundaries[func_name]
+                    func_calls = [
+                        c
+                        for c in calls
+                        if func_bounds["start"] <= c["offset"] <= func_bounds["end"]
+                    ]
+                    if func_calls:
+                        findings.append(
+                            VulnerabilityFinding(
+                                vuln_type=VulnerabilityType.REENTRANCY,
+                                severity=Severity.HIGH,
+                                title="Cross Function Reentrancy Risk",
+                                description=f"State variable {var} is modified in multiple functions. External call in {func_name} can allow reentrancy into other functions modifying the same state.",
+                                location={"line": func_bounds["line_number"]},
+                                code_snippet=self.extract_code_context(
+                                    code, func_bounds["line_number"]
+                                ),
+                                fix_suggestion="Apply ReentrancyGuard to all functions modifying shared state, or implement atomic state transitions.",
+                                cvss_score=self.calculate_cvss(0.9, 0.85),
+                                confidence=0.85,
+                                detector=self.name,
+                                cwe_id="CWE-367",
+                                tags=["reentrancy", "cross-function"],
+                            )
+                        )
+        return findings
+
+    def _detect_read_only_reentrancy(
+        self, code: str, boundaries: Dict, calls: List
+    ) -> List[VulnerabilityFinding]:
+        findings = []
+        # Read-only reentrancy detection
+        static_calls = [c for c in calls if c["type"] == "staticcall"]
+        for call in static_calls:
+            findings.append(
+                VulnerabilityFinding(
+                    vuln_type=VulnerabilityType.REENTRANCY,
+                    severity=Severity.MEDIUM,
+                    title="Read Only Reentrancy Risk",
+                    description="staticcall can still trigger reentrancy via fallback functions that modify state in other contracts.",
+                    location=self.get_match_location(call["match"]),
+                    code_snippet=self.extract_code_context(code, call["line_number"]),
+                    fix_suggestion="Be aware that even read-only external calls can cause reentrancy effects in external contract state.",
+                    cvss_score=self.calculate_cvss(0.5, 0.5),
+                    confidence=0.7,
+                    detector=self.name,
+                    cwe_id="CWE-371",
+                    tags=["reentrancy", "read-only"],
+                )
+            )
+        return findings
+
+    def _detect_erc777_reentrancy(
+        self, code: str, boundaries: Dict
+    ) -> List[VulnerabilityFinding]:
+        findings = []
+        if "tokensReceived" in code or "ERC777" in code or "ERC1820" in code:
+            findings.append(
+                VulnerabilityFinding(
+                    vuln_type=VulnerabilityType.REENTRANCY,
+                    severity=Severity.HIGH,
+                    title="ERC777 Reentrancy Risk",
+                    description="ERC777 token transfers trigger external callbacks before execution completes. This allows reentrancy even when using safeTransfer.",
+                    location={"line": code.find("ERC777") // 100},
+                    code_snippet="",
+                    fix_suggestion="Always use ReentrancyGuard when interacting with ERC777 tokens. Never assume safeTransfer is safe from reentrancy.",
+                    cvss_score=self.calculate_cvss(0.95, 0.9),
+                    confidence=0.9,
+                    detector=self.name,
+                    cwe_id="CWE-1156",
+                    tags=["reentrancy", "erc777", "defi"],
+                )
+            )
+        return findings
+
+        read_only_findings = self._detect_read_only_reentrancy(source_code, functions)
         findings.extend(read_only_findings)
 
         erc777_findings = self._detect_erc777_hooks(source_code)
@@ -158,7 +499,15 @@ class ReentrancyDetector(BaseDetector):
     def _extract_modifiers(self, modifier_str: str) -> List[str]:
         modifiers = []
         for mod in re.findall(r"(\w+)", modifier_str):
-            if mod not in ["public", "external", "internal", "private", "view", "pure", "payable"]:
+            if mod not in [
+                "public",
+                "external",
+                "internal",
+                "private",
+                "view",
+                "pure",
+                "payable",
+            ]:
                 modifiers.append(mod)
         return modifiers
 
@@ -166,7 +515,7 @@ class ReentrancyDetector(BaseDetector):
         calls = []
         for pattern_name, pattern in self.compiled_patterns.items():
             for match in pattern.finditer(source_code):
-                line_num = source_code[:match.start()].count("\n") + 1
+                line_num = source_code[: match.start()].count("\n") + 1
                 calls.append(
                     {
                         "type": pattern_name,
@@ -190,7 +539,7 @@ class ReentrancyDetector(BaseDetector):
         )
 
         for match in state_var_pattern.finditer(source_code):
-            line_num = source_code[:match.start()].count("\n") + 1
+            line_num = source_code[: match.start()].count("\n") + 1
             modifications.append(
                 {
                     "variable": match.group(1),
@@ -204,7 +553,7 @@ class ReentrancyDetector(BaseDetector):
             groups = match.groups()
             var_name = next((g for g in groups if g), None)
             if var_name:
-                line_num = source_code[:match.start()].count("\n") + 1
+                line_num = source_code[: match.start()].count("\n") + 1
                 modifications.append(
                     {
                         "variable": var_name,
@@ -313,7 +662,9 @@ class ReentrancyDetector(BaseDetector):
         }
         return severity_map.get(pattern, Severity.HIGH)
 
-    def _extract_code_snippet(self, source_code: str, line: int, context: int = 3) -> str:
+    def _extract_code_snippet(
+        self, source_code: str, line: int, context: int = 3
+    ) -> str:
         lines = source_code.split("\n")
         start = max(0, line - context - 1)
         end = min(len(lines), line + context)
@@ -354,15 +705,15 @@ class ReentrancyDetector(BaseDetector):
                 "```solidity\n"
                 "function withdraw() external {\n"
                 "    // Checks\n"
-                "    require(balances[msg.sender] > 0, \"No balance\");\n"
+                '    require(balances[msg.sender] > 0, "No balance");\n'
                 "    \n"
                 "    // Effects - Update state FIRST\n"
                 "    uint256 amount = balances[msg.sender];\n"
                 "    balances[msg.sender] = 0;\n"
                 "    \n"
                 "    // Interactions - External call LAST\n"
-                "    (bool success, ) = msg.sender.call{value: amount}(\"\");\n"
-                "    require(success, \"Transfer failed\");\n"
+                '    (bool success, ) = msg.sender.call{value: amount}("");\n'
+                '    require(success, "Transfer failed");\n'
                 "}\n"
                 "```"
             ),
@@ -375,9 +726,14 @@ class ReentrancyDetector(BaseDetector):
                 "determining return values or critical calculations."
             ),
         }
-        return suggestions.get(pattern, "Implement reentrancy guards and checks-effects-interactions pattern.")
+        return suggestions.get(
+            pattern,
+            "Implement reentrancy guards and checks-effects-interactions pattern.",
+        )
 
-    def _calculate_cvss_score(self, pattern: ReentrancyPattern, severity: Severity) -> float:
+    def _calculate_cvss_score(
+        self, pattern: ReentrancyPattern, severity: Severity
+    ) -> float:
         base_scores = {
             Severity.CRITICAL: 9.8,
             Severity.HIGH: 7.5,
@@ -481,3 +837,664 @@ class ReentrancyDetector(BaseDetector):
 
 
 __all__ = ["ReentrancyDetector", "ReentrancyPattern", "ReentrancyContext"]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
