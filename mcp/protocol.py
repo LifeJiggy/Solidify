@@ -1,5 +1,5 @@
 """
-SoliGuard MCP Protocol
+Solidify MCP Protocol
 MCP protocol implementation for model context protocol
 
 Author: Peace Stephen (Tech Lead)

@@ -1,5 +1,5 @@
 """
-SoliGuard Session Manager
+Solidify Session Manager
 Manages audit and hunting sessions
 
 Author: Peace Stephen (Tech Lead)

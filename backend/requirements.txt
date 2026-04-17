@@ -1,4 +1,4 @@
-# SoliGuard Backend Dependencies
+# Solidify Backend Dependencies
 
 # FastAPI & Server
 fastapi==0.109.0

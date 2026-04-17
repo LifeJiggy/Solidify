@@ -1,5 +1,5 @@
 """
-SoliGuard Integration Factory
+Solidify Integration Factory
 Factory for creating integrations
 
 Author: Peace Stephen (Tech Lead)

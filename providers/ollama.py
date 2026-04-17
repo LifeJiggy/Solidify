@@ -1,5 +1,5 @@
 """
-SoliGuard Ollama Provider
+Solidify Ollama Provider
 Local LLM provider for offline security analysis
 
 Author: Peace Stephen (Tech Lead)

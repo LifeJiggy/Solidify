@@ -30,7 +30,7 @@ An interesting mix: Python-heavy with AI/security depth. Joel's blockchain and P
 
 ---
 
-## Project: SoliGuard
+## Project: Solidify
 
 **Tagline:** *"Catch vulnerabilities before attackers do."*
 

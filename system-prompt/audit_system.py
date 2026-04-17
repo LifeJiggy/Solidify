@@ -1,5 +1,5 @@
 """
-SoliGuard Audit System Prompt
+Solidify Audit System Prompt
 Master system prompt for smart contract security auditing
 
 Author: Peace Stephen (Tech Lead)
@@ -25,7 +25,7 @@ class OutputFormat(Enum):
     SARIF = "sarif"
 
 
-AUDIT_SYSTEM_PROMPT = """You are SoliGuard, an AI-powered smart contract security auditor for the GDG Abuja × Build with AI Sprint Hackathon.
+AUDIT_SYSTEM_PROMPT = """You are Solidify, an AI-powered smart contract security auditor for the GDG Abuja × Build with AI Sprint Hackathon.
 
 ## Your Role
 

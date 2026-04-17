@@ -1,5 +1,5 @@
 """
-SoliGuard Front-Running Hunter
+Solidify Front-Running Hunter
 Hunt for front-running vulnerabilities with comprehensive detection
 
 Author: Peace Stephen (Tech Lead)
@@ -560,7 +560,7 @@ class FrontRunningHunter:
                 {
                     "tool": {
                         "driver": {
-                            "name": "SoliGuard Front-Running Hunter",
+                            "name": "Solidify Front-Running Hunter",
                             "rules": [
                                 {
                                     "id": f.cwe_id or f.pattern.value,

@@ -1,5 +1,5 @@
 """
-SoliGuard Groq Provider
+Solidify Groq Provider
 Groq LPU API integration for high-speed inference
 
 Author: Peace Stephen (Tech Lead)

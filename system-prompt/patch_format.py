@@ -1,5 +1,5 @@
 """
-SoliGuard Patch Format
+Solidify Patch Format
 JSON output format for security findings
 
 Author: Peace Stephen (Tech Lead)
@@ -221,7 +221,7 @@ class SecurityReport:
         runs = [{
             "results": [
                 {
-                    "ruleId": f"soliguard/{f.type}",
+                    "ruleId": f"Solidify/{f.type}",
                     "level": f"error" if f.severity in ["critical", "high"] else "warning",
                     "message": {"text": f.description},
                     "locations": [{
@@ -448,7 +448,7 @@ def format_cvss_score(score: float) -> str:
 
 JSON_SCHEMA = {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "SoliGuard Security Report",
+    "title": "Solidify Security Report",
     "type": "object",
     "required": ["findings", "summary"],
     "properties": {

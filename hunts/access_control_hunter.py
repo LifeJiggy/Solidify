@@ -1,5 +1,5 @@
 """
-SoliGuard Access Control Hunter
+Solidify Access Control Hunter
 Hunt for access control vulnerabilities with comprehensive patterns
 Author: Peace Stephen (Tech Lead)
 Description: Specialized hunter for access control vulnerabilities in smart contracts

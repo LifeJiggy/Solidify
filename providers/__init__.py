@@ -1,5 +1,5 @@
 """
-SoliGuard Providers
+Solidify Providers
 Provider abstraction layer for AI LLM services
 
 Author: Peace Stephen (Tech Lead)

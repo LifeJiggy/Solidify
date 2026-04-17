@@ -1,5 +1,5 @@
 """
-SoliGuard Session Memory
+Solidify Session Memory
 Session memory for analysis sessions
 
 Author: Peace Stephen (Tech Lead)

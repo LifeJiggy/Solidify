@@ -1,5 +1,5 @@
 """
-SoliGuard Context Prompt
+Solidify Context Prompt
 Context management and memory prompts
 
 Author: Peace Stephen (Tech Lead)

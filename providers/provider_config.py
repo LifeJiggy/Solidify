@@ -1,5 +1,5 @@
 """
-SoliGuard Provider Configuration
+Solidify Provider Configuration
 Configuration management for all LLM providers
 
 Author: Peace Stephen (Tech Lead)

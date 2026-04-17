@@ -1,5 +1,5 @@
 """
-SoliGuard Auth Hooks
+Solidify Auth Hooks
 Authentication and authorization hooks for security analysis pipeline
 
 Author: Peace Stephen (Tech Lead)

@@ -1,5 +1,5 @@
 """
-SoliGuard Detection Rules
+Solidify Detection Rules
 Detection rules for smart contract vulnerability identification
 
 Author: Peace Stephen (Tech Lead)

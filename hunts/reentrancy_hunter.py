@@ -1,5 +1,5 @@
 """
-SoliGuard Reentrancy Hunter
+Solidify Reentrancy Hunter
 Hunt for reentrancy vulnerabilities with comprehensive detection
 
 Author: Peace Stephen (Tech Lead)

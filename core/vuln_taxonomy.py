@@ -1,5 +1,5 @@
 """
-SoliGuard Vulnerability Taxonomy
+Solidify Vulnerability Taxonomy
 Comprehensive vulnerability definitions and metadata
 
 Author: Peace Stephen (Tech Lead)

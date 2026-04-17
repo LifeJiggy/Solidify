@@ -1,5 +1,5 @@
 """
-SoliGuard Prompt Engine
+Solidify Prompt Engine
 Builds prompts for smart contract auditing
 
 Author: Peace Stephen (Tech Lead)
@@ -49,7 +49,7 @@ class AuditPromptConfig:
 class PromptTemplates:
     """Collection of prompt templates"""
     
-    SYSTEM_PROMPT = """You are SoliGuard, an expert smart contract security auditor powered by Google Gemini.
+    SYSTEM_PROMPT = """You are Solidify, an expert smart contract security auditor powered by Google Gemini.
 
 Your role is to analyze Solidity smart contracts for security vulnerabilities and provide:
 1. Vulnerability identification with severity ratings
@@ -143,7 +143,7 @@ Provide:
 
 Keep explanations accessible to developers without security background."""
 
-    NATURAL_LANGUAGE_TEMPLATE = """You are SoliGuard, a smart contract security expert.
+    NATURAL_LANGUAGE_TEMPLATE = """You are Solidify, a smart contract security expert.
 
 The user is asking about their contract: "{question}"
 
@@ -230,7 +230,7 @@ Return ONLY the Solidity code for the PoC contract."""
 
 class PromptEngine:
     """
-    Prompt generation and response parsing for SoliGuard
+    Prompt generation and response parsing for Solidify
     
     Features:
     - Multiple prompt templates

@@ -1,12 +1,12 @@
 """
-SoliGuard Models Package
+Solidify Models Package
 All model series for smart contract security auditing
 
 Author: Peace Stephen (Tech Lead)
 """
 
 from models.model_registry import (
-    SoliGuardModel,
+    SolidifyModel,
     SecurityFocus,
     ModelProvider,
     get_model,
@@ -21,8 +21,8 @@ from models.model_registry import (
 __version__ = "1.0.0"
 
 __all__ = [
-    "SoliGuardModel",
-    "SecurityFocus", 
+    "SolidifyModel",
+    "SecurityFocus",
     "ModelProvider",
     "get_model",
     "list_all_models",
@@ -33,5 +33,5 @@ __all__ = [
     "AVAILABLE_MODELS",
 ]
 
-print(f"✅ SoliGuard Models loaded: {len(AVAILABLE_MODELS)} models available")
+print(f"[OK] Solidify Models loaded: {len(AVAILABLE_MODELS)} models available")
 print(f"   Models: {', '.join(list(AVAILABLE_MODELS.keys())[:10])}...")

@@ -1,5 +1,5 @@
 """
-SoliGuard MCP Tools
+Solidify MCP Tools
 MCP tools for model context protocol
 
 Author: Peace Stephen (Tech Lead)

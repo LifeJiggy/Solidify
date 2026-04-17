@@ -1,5 +1,5 @@
 """
-SoliGuard NVIDIA Provider
+Solidify NVIDIA Provider
 NVIDIA NIM API integration for smart contract security analysis
 
 Author: Peace Stephen (Tech Lead)
@@ -76,7 +76,7 @@ class NvidiaResponse:
 
 MODELS = {
     # ============================================
-    # AGENTIC SECURITY MODELS - SOLIGUARD
+    # AGENTIC SECURITY MODELS - Solidify
     # ============================================
     # ---- SAFETY GUARD MODELS ----
     "nvidia/llama-3.1-nemotron-safety-guard-8b-v3": {
@@ -577,7 +577,7 @@ MODELS = {
 
 
 class NvidiaProvider:
-    """NVIDIA NIM provider for SoliGuard security analysis"""
+    """NVIDIA NIM provider for Solidify security analysis"""
 
     def __init__(self, config: Optional[NvidiaConfig] = None):
         self.config = config or NvidiaConfig(api_key=os.getenv("NVIDIA_API_KEY", ""))

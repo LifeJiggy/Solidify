@@ -1,5 +1,5 @@
 """
-SoliGuard Runtime Reporter
+Solidify Runtime Reporter
 Runtime reporting and output generation
 
 Author: Peace Stephen (Tech Lead)
@@ -76,7 +76,7 @@ class ReportBuilder:
     - Template support
     """
     
-    def __init__(self, title: str = "SoliGuard Report"):
+    def __init__(self, title: str = "Solidify Report"):
         self.title = title
         self._sections: List[ReportSection] = []
         self._metadata: Dict[str, Any] = {}

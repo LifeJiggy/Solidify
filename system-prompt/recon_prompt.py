@@ -1,5 +1,5 @@
 """
-SoliGuard Recon Prompt
+Solidify Recon Prompt
 Reconnaissance and information gathering prompts
 
 Author: Peace Stephen (Tech Lead)

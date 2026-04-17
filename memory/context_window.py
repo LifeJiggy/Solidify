@@ -1,5 +1,5 @@
 """
-SoliGuard Context Window
+Solidify Context Window
 Context window management for token limits
 
 Author: Peace Stephen (Tech Lead)

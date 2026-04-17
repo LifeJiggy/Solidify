@@ -1,5 +1,5 @@
 """
-SoliGuard Core Memory
+Solidify Core Memory
 In-memory state and data management
 
 Author: Peace Stephen (Tech Lead)

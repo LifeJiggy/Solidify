@@ -1,5 +1,5 @@
 """
-SoliGuard Cleanup Hooks
+Solidify Cleanup Hooks
 Cleanup and resource management hooks for security analysis pipeline
 
 Author: Peace Stephen (Tech Lead)

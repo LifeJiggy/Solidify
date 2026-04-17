@@ -1,5 +1,5 @@
 """
-SoliGuard Backend - FastAPI Application Entry Point
+Solidify Backend - FastAPI Application Entry Point
 Web3 Smart Contract Security Auditor
 
 Author: Peace Stephen (Tech Lead)
@@ -34,11 +34,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Import core modules
-from core.gemini_client import GeminiClient
-from core.prompt_engine import PromptEngine
-from core.pdf_generator import PDFGenerator
-from core.cvss_scorer import CVSSScorer
-from core.vuln_taxonomy import VulnTaxonomy
+from Solidify.core.gemini_client import GeminiClient
+from Solidify.core.prompt_engine import PromptEngine
+from Solidify.core.pdf_generator import PDFGenerator
+from Solidify.core.cvss_scorer import CVSSScorer
+from Solidify.core.vuln_taxonomy import VulnTaxonomy
 
 
 # ============================================================================
@@ -109,7 +109,7 @@ class AppState:
         
     async def initialize(self):
         """Initialize all services"""
-        logger.info("Initializing SoliGuard services...")
+        logger.info("Initializing Solidify services...")
         
         # Initialize Gemini client
         api_key = os.getenv("GEMINI_API_KEY")
@@ -164,15 +164,15 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     # Startup
     await state.initialize()
-    logger.info("🚀 SoliGuard API started")
+    logger.info("🚀 Solidify API started")
     yield
     # Shutdown
-    logger.info("🛑 SoliGuard API stopped")
+    logger.info("🛑 Solidify API stopped")
 
 
 # Create FastAPI app
 app = FastAPI(
-    title="SoliGuard API",
+    title="Solidify API",
     description="AI-Powered Smart Contract Security Auditor",
     version="1.0.0",
     docs_url="/docs",
@@ -206,7 +206,7 @@ app.add_middleware(
 async def root():
     """Root endpoint"""
     return {
-        "name": "SoliGuard API",
+        "name": "Solidify API",
         "version": "1.0.0",
         "description": "AI-Powered Smart Contract Security Auditor",
         "docs": "/docs",

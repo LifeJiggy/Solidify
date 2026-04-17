@@ -1,5 +1,5 @@
 """
-SoliGuard Session Loader
+Solidify Session Loader
 Dynamic session loading
 
 Author: Peace Stephen (Tech Lead)

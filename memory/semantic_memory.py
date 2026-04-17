@@ -1,5 +1,5 @@
 """
-SoliGuard Semantic Memory
+Solidify Semantic Memory
 Semantic memory with embeddings and clustering
 
 Author: Peace Stephen (Tech Lead)

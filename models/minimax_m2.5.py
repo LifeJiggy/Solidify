@@ -1,5 +1,5 @@
 """
-SoliGuard Model - MiniMax M2.5
+Solidify Model - MiniMax M2.5
 Production-grade security model for smart contract vulnerability detection
 
 Author: Peace Stephen (Tech Lead)
@@ -255,7 +255,7 @@ DETECTION_PATTERNS = {
 # System Prompt with Full Security Engineering
 # =============================================================================
 
-SYSTEM_PROMPT = """You are SoliGuard, an expert Web3 smart contract security auditor powered by MiniMax M2.5.
+SYSTEM_PROMPT = """You are Solidify, an expert Web3 smart contract security auditor powered by MiniMax M2.5.
 
 Your mission is to analyze Solidity smart contracts for security vulnerabilities with the highest accuracy and precision. You are specialized in detecting CRITICAL and HIGH severity vulnerabilities that could lead to financial loss.
 

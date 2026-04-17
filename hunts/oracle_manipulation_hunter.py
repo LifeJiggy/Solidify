@@ -1,5 +1,5 @@
 """
-SoliGuard Oracle Manipulation Hunter
+Solidify Oracle Manipulation Hunter
 Hunt for oracle manipulation vulnerabilities with comprehensive detection
 
 Author: Peace Stephen (Tech Lead)
@@ -523,7 +523,7 @@ class OracleManipulationHunter:
                 {
                     "tool": {
                         "driver": {
-                            "name": "SoliGuard Oracle Manipulation Hunter",
+                            "name": "Solidify Oracle Manipulation Hunter",
                             "rules": [
                                 {
                                     "id": f.cwe_id or f.pattern.value,

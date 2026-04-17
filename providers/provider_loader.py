@@ -1,5 +1,5 @@
 """
-SoliGuard Provider Loader
+Solidify Provider Loader
 Dynamic provider loading and initialization
 
 Author: Peace Stephen (Tech Lead)

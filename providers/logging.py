@@ -1,4 +1,4 @@
-"""Logging - Streaming event logging and diagnostics for SoliGuard"""
+"""Logging - Streaming event logging and diagnostics for Solidify"""
 
 import logging
 import json

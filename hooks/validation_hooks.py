@@ -1,5 +1,5 @@
 """
-SoliGuard Validation Hooks
+Solidify Validation Hooks
 Validation hooks for smart contract security analysis
 
 Author: Peace Stephen (Tech Lead)

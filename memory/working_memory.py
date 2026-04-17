@@ -1,5 +1,5 @@
 """
-SoliGuard Working Memory
+Solidify Working Memory
 Working memory for current analysis context
 
 Author: Peace Stephen (Tech Lead)

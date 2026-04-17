@@ -1,5 +1,5 @@
 """
-SoliGuard Runtime Factory
+Solidify Runtime Factory
 Object factory and component instantiation
 
 Author: Peace Stephen (Tech Lead)

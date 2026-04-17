@@ -1,5 +1,5 @@
 """
-SoliGuard Post Hooks
+Solidify Post Hooks
 Post-analysis hooks for smart contract security analysis
 
 Author: Peace Stephen (Tech Lead)

@@ -1,7 +1,7 @@
-# SoliGuard Quick Start Script
+# Solidify Quick Start Script
 # Run this to set up the project
 
-echo "🚀 SoliGuard Quick Start"
+echo "🚀 Solidify Quick Start"
 echo "======================"
 
 # Check Python version

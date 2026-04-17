@@ -1,5 +1,5 @@
 """
-SoliGuard Arbitrary Call Hunter
+Solidify Arbitrary Call Hunter
 Hunt for arbitrary call vulnerabilities with comprehensive detection
 Author: Peace Stephen (Tech Lead)
 Description: Specialized hunter for arbitrary call and call injection vulnerabilities

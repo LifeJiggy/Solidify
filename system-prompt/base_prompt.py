@@ -1,9 +1,9 @@
 """
-SoliGuard Base Prompt
+Solidify Base Prompt
 Foundation prompt templates and utilities
 
 Author: Peace Stephen (Tech Lead)
-Description: Base prompt system for SoliGuard security auditing
+Description: Base prompt system for Solidify security auditing
 """
 
 import re
@@ -232,7 +232,7 @@ class BasePromptBuilder:
         )
     
     def _get_system_base_template(self) -> str:
-        return """You are SoliGuard, an expert smart contract security auditor specialized in blockchain security.
+        return """You are Solidify, an expert smart contract security auditor specialized in blockchain security.
 
 Your role is to analyze Solidity smart contracts for vulnerabilities, security risks, and potential exploits.
 

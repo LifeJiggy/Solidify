@@ -1,5 +1,5 @@
 """
-SoliGuard Core Router
+Solidify Core Router
 Request routing and dispatch
 
 Author: Peace Stephen (Tech Lead)
@@ -81,7 +81,7 @@ class Response:
 
 class Router:
     """
-    Request router for SoliGuard
+    Request router for Solidify
     
     Features:
     - Route registration

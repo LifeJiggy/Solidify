@@ -1,5 +1,5 @@
 """
-SoliGuard CVSS Scorer
+Solidify CVSS Scorer
 CVSS 3.1 scoring for vulnerability severity
 
 Author: Peace Stephen (Tech Lead)

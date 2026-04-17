@@ -1,9 +1,9 @@
 @echo off
-REM SoliGuard Quick Start Script (Windows)
+REM Solidify Quick Start Script (Windows)
 REM Run this to set up the project
 
 echo.
-echo 🚀 SoliGuard Quick Start
+echo 🚀 Solidify Quick Start
 echo ======================
 
 REM Check Python version

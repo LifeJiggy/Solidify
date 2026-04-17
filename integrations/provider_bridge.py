@@ -1,5 +1,5 @@
 """
-SoliGuard Provider Bridge
+Solidify Provider Bridge
 Bridge between providers and audit engine
 
 Author: Peace Stephen (Tech Lead)

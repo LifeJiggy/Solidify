@@ -1,5 +1,5 @@
 """
-SoliGuard Core Executor
+Solidify Core Executor
 Async execution engine for audit tasks
 
 Author: Peace Stephen (Tech Lead)
@@ -391,7 +391,7 @@ class ProgressTracker:
 
 class CoreExecutor:
     """
-    Main execution engine for SoliGuard
+    Main execution engine for Solidify
     
     Features:
     - Async task execution

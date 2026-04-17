@@ -1,4 +1,4 @@
-"""Metrics - Streaming performance tracking for SoliGuard"""
+"""Metrics - Streaming performance tracking for Solidify"""
 
 import time
 from typing import Dict, Any, Optional, List

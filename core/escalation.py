@@ -1,5 +1,5 @@
 """
-SoliGuard Core Escalation
+Solidify Core Escalation
 Escalation handling and priority management
 
 Author: Peace Stephen (Tech Lead)

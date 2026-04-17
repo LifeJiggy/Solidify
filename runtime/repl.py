@@ -1,9 +1,9 @@
 """
-SoliGuard Runtime REPL
+Solidify Runtime REPL
 Interactive command line interface
 
 Author: Peace Stephen (Tech Lead)
-Description: Interactive REPL for SoliGuard
+Description: Interactive REPL for Solidify
 """
 
 import asyncio
@@ -77,7 +77,7 @@ class HistoryManager:
     
     def __init__(self, max_size: int = 1000, history_file: Optional[str] = None):
         self.max_size = max_size
-        self.history_file = history_file or os.path.expanduser("~/.soliguard_history")
+        self.history_file = history_file or os.path.expanduser("~/.Solidify_history")
         self._history: List[str] = []
         self._load_history()
     
@@ -425,7 +425,7 @@ class REPL:
             format=OutputFormat[self.config.get("format", "TEXT").upper()]
         )
         
-        self.prompt = self.config.get("prompt", "soliguard> ")
+        self.prompt = self.config.get("prompt", "Solidify> ")
         self.debug = self.config.get("debug", False)
         self.running = True
         
@@ -472,7 +472,7 @@ class REPL:
     def _print_welcome(self) -> None:
         """Print welcome message"""
         print("=" * 50)
-        print("  SoliGuard Security Auditor REPL")
+        print("  Solidify Security Auditor REPL")
         print("  Type 'help' for available commands")
         print("=" * 50)
     

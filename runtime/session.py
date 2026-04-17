@@ -1,5 +1,5 @@
 """
-SoliGuard Runtime Session
+Solidify Runtime Session
 Session management and state
 
 Author: Peace Stephen (Tech Lead)

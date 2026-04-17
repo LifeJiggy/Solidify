@@ -1,10 +1,10 @@
-# 📢 Team Message - SoliGuard Project Kickoff
+# 📢 Team Message - Solidify Project Kickoff
 
 ---
 
 ## 🎉 Welcome Team!
 
-We've officially launched **SoliGuard** - our Web3 Smart Contract Security Auditor! 
+We've officially launched **Solidify** - our Web3 Smart Contract Security Auditor! 
 
 🔗 **Repository:** https://github.com/LifeJiggy/Solidify
 
@@ -12,7 +12,7 @@ We've officially launched **SoliGuard** - our Web3 Smart Contract Security Audit
 
 ## 📋 Project Overview
 
-**SoliGuard** is an AI-powered smart contract security auditor that:
+**Solidify** is an AI-powered smart contract security auditor that:
 - 🔍 Scans Solidity contracts for vulnerabilities
 - 🧠 Explains risks in plain English
 - 🎯 Scores findings by severity (CRITICAL/HIGH/MEDIUM/LOW)
@@ -132,6 +132,6 @@ We have 5 days at GDG Abuja × Build with AI Sprint. Let's make Solidify the bes
 **Questions? Reach out in the group!**
 
 ---
-*Built with 🔐 by Team SoliGuard*
+*Built with 🔐 by Team Solidify*
 *Ecosystem*
 *Let's rock! 🚀*

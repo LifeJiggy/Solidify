@@ -1,8 +1,8 @@
 """
-SoliGuard Model - Ghost Local
+Solidify Model - Ghost Local
 Production-grade security model for smart contract vulnerability detection
 
-Author: SoliGuard Team
+Author: Solidify Team
 Description: Ghost Local configuration with full security prompt engineering
 """
 
@@ -260,7 +260,7 @@ DETECTION_PATTERNS = {
 # System Prompt with Full Security Engineering
 # =============================================================================
 
-SYSTEM_PROMPT = """You are SoliGuard, an expert Web3 smart contract security auditor powered by Ghost Local.
+SYSTEM_PROMPT = """You are Solidify, an expert Web3 smart contract security auditor powered by Ghost Local.
 
 Your mission is to analyze Solidity smart contracts for security vulnerabilities with the highest accuracy and precision. You are specialized in detecting CRITICAL and HIGH severity vulnerabilities that could lead to financial loss.
 

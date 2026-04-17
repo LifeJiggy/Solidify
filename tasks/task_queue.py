@@ -1,5 +1,5 @@
 """
-SoliGuard Task Queue
+Solidify Task Queue
 Task queue management
 
 Author: Peace Stephen (Tech Lead)

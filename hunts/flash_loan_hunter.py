@@ -1,5 +1,5 @@
 """
-SoliGuard Flash Loan Hunter
+Solidify Flash Loan Hunter
 Hunt for flash loan attack vectors with comprehensive detection
 Author: Peace Stephen (Tech Lead)
 Description: Specialized hunter for flash loan vulnerabilities in DeFi protocols

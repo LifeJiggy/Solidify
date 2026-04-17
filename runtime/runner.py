@@ -1,5 +1,5 @@
 """
-SoliGuard Runtime Runner
+Solidify Runtime Runner
 Execution runner and task management
 
 Author: Peace Stephen (Tech Lead)

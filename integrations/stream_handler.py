@@ -1,5 +1,5 @@
 """
-SoliGuard Stream Handler
+Solidify Stream Handler
 Handle streaming responses
 
 Author: Peace Stephen (Tech Lead)

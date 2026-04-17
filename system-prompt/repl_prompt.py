@@ -1,5 +1,5 @@
 """
-SoliGuard REPL Prompt
+Solidify REPL Prompt
 Interactive REPL command prompts
 
 Author: Peace Stephen (Tech Lead)
@@ -30,7 +30,7 @@ REPL_COMMANDS = {
 
 
 REPL_HELP = """
-SoliGuard REPL Commands:
+Solidify REPL Commands:
 
 audit <contract> - Run security audit
 explain <vuln> - Explain vulnerability

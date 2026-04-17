@@ -1,5 +1,5 @@
 """
-SoliGuard Ollama Bridge
+Solidify Ollama Bridge
 Bridge for Ollama local models
 
 Author: Peace Stephen (Tech Lead)

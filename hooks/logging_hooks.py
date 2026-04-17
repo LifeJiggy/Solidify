@@ -1,5 +1,5 @@
 """
-SoliGuard Logging Hooks
+Solidify Logging Hooks
 Logging hooks for security analysis pipeline
 
 Author: Peace Stephen (Tech Lead)
@@ -126,7 +126,7 @@ class FileLogger(BaseLogger):
     def __init__(self, name: str = "file", log_file: LogFile = None):
         super().__init__(name)
         self.log_file = log_file or LogFile(
-            path="logs/soliguard.log",
+            path="logs/Solidify.log",
             format=LogFormat.TEXT
         )
         self.buffer = deque(maxlen=1000)

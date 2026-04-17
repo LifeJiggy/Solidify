@@ -1,5 +1,5 @@
 """
-SoliGuard Core Orchestrator
+Solidify Core Orchestrator
 Main orchestration engine for audit processing
 
 Author: Peace Stephen (Tech Lead)
@@ -73,7 +73,7 @@ class ChainConfig:
 
 class Orchestrator:
     """
-    Main orchestrator for SoliGuard audit pipeline
+    Main orchestrator for Solidify audit pipeline
     
     Features:
     - Task management and scheduling

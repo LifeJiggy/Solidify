@@ -1,5 +1,5 @@
 """
-SoliGuard Task Definitions
+Solidify Task Definitions
 Task definitions for security audit workflows
 
 Author: Peace Stephen (Tech Lead)

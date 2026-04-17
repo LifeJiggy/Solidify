@@ -1,5 +1,5 @@
 """
-SoliGuard Integer Overflow Hunter
+Solidify Integer Overflow Hunter
 Hunt for integer overflow/underflow vulnerabilities with comprehensive detection
 Author: Peace Stephen (Tech Lead)
 Description: Specialized hunter for arithmetic vulnerabilities in smart contracts

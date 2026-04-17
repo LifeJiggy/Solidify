@@ -1,5 +1,5 @@
 """
-SoliGuard MCP Transport
+Solidify MCP Transport
 MCP transport layer for communication
 
 Author: Peace Stephen (Tech Lead)

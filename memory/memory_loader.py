@@ -1,5 +1,5 @@
 """
-SoliGuard Memory Loader
+Solidify Memory Loader
 Memory loading and persistence utilities
 
 Author: Peace Stephen (Tech Lead)

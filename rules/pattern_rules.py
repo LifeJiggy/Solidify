@@ -1,5 +1,5 @@
 """
-SoliGuard Pattern Rules
+Solidify Pattern Rules
 Pattern matching rules for smart contract analysis
 
 Author: Peace Stephen (Tech Lead)

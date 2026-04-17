@@ -1,5 +1,5 @@
 """
-SoliGuard Natural Language Prompt
+Solidify Natural Language Prompt
 Natural language query handling
 
 Author: Peace Stephen (Tech Lead)

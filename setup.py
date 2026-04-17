@@ -1,5 +1,5 @@
 """
-SoliGuard - Web3 Smart Contract Security Auditor
+Solidify - Web3 Smart Contract Security Auditor
 Python Package Setup
 """
 
@@ -12,9 +12,9 @@ with open("backend/requirements.txt", "r", encoding="utf-8") as fh:
     requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
 
 setup(
-    name="soliguard",
+    name="Solidify",
     version="1.0.0",
-    author="Team SoliGuard",
+    author="Team Solidify",
     author_email="Bloomtonjovish@gmail.com",
     description="AI-powered smart contract security auditor for Web3",
     long_description=long_description,
@@ -36,7 +36,7 @@ setup(
     install_requires=requirements,
     entry_points={
         "console_scripts": [
-            "soliguard=solidify.cli:main",
+            "Solidify=solidify.cli:main",
         ],
     },
     include_package_data=True,

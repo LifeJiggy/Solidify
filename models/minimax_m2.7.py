@@ -1,5 +1,5 @@
 """
-SoliGuard Model - MiniMax M2.7
+Solidify Model - MiniMax M2.7
 Advanced production-grade security model with reasoning capabilities
 
 Author: Peace Stephen (Tech Lead)
@@ -167,7 +167,7 @@ CHAIN_ATTACKS = {
 # Advanced System Prompt
 # =============================================================================
 
-SYSTEM_PROMPT = """You are SoliGuard Advanced powered by MiniMax M2.7 with DEEP REASONING capabilities.
+SYSTEM_PROMPT = """You are Solidify Advanced powered by MiniMax M2.7 with DEEP REASONING capabilities.
 
 Your specialty is detecting COMPLEX multi-step exploits and attack chains that simpler models miss.
 

@@ -1,13 +1,12 @@
 """
-Solidify Qwen Provider
-Alibaba Qwen API integration
+Solidify MiniMax Provider
+MiniMax AI API integration for smart contract security analysis
 
 Author: Peace Stephen (Tech Lead)
-Description: Qwen provider for smart contract analysis
+Description: MiniMax provider for AI-powered analysis
 """
 
 import os
-import asyncio
 import logging
 from typing import Dict, Any, Optional, List, AsyncIterator
 from dataclasses import dataclass, field
@@ -16,30 +15,25 @@ from enum import Enum
 logger = logging.getLogger(__name__)
 
 
-class QwenModel(Enum):
-    QWEN_3_397B = "qwen-plus"
-    QWEN_3_72B = "qwen-turbo"
-    QWEN_2_5_72B = "qwen2.5-plus-instruct"
-    QWEN_2_5_32B = "qwen2.5-32b-instruct"
-    QWEN_2_5_7B = "qwen2.5-7b-instruct"
-    QWEN_CODER_32B = "qwen2.5-coder-32b-instruct"
-    QWEN_CODER_7B = "qwen2.5-coder-7b-instruct"
-    QWEN_VL_32B = "qwen2.5-vl-32b-instruct"
-    QWEN_VL_3B = "qwen2.5-vl-3b-instruct"
+class MiniMaxModel(Enum):
+    M2_7 = "abab6.5s-chat"
+    M2_5 = "abab6.5g-chat"
+    M2 = "abab6-chat"
 
 
 @dataclass
-class QwenConfig:
+class MiniMaxConfig:
     api_key: str
-    model: str = "qwen-plus"
-    base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    api_id: str
+    model: str = "abab6.5s-chat"
+    base_url: str = "https://api.minimax.chat/v1/text/chatcompletion_v2"
     temperature: float = 0.7
     max_tokens: int = 8192
     timeout: int = 120
 
 
 @dataclass
-class QwenResponse:
+class MiniMaxResponse:
     content: str
     model: str
     usage: Dict[str, int] = field(default_factory=dict)
@@ -48,50 +42,45 @@ class QwenResponse:
 
 
 MODELS = {
-    "qwen-plus": {
-        "name": "Qwen Plus",
-        "context_window": 128000,
+    "abab6.5s-chat": {
+        "name": "MiniMax M2.7",
+        "context_window": 245760,
         "category": "PREMIUM",
-        "use_cases": ["smart-contract-audit", "comprehensive-analysis"],
+        "use_cases": [
+            "smart-contract-audit",
+            "vulnerability-analysis",
+            "comprehensive-analysis",
+        ],
     },
-    "qwen-turbo": {
-        "name": "Qwen Turbo",
-        "context_window": 100000,
+    "abab6.5g-chat": {
+        "name": "MiniMax M2.5",
+        "context_window": 245760,
         "category": "FAST",
         "use_cases": ["quick-scan", "preliminary-analysis"],
     },
-    "qwen2.5-plus-instruct": {
-        "name": "Qwen 2.5 Plus",
-        "context_window": 32768,
-        "category": "CODE_ANALYSIS",
-        "use_cases": ["code-review", "vulnerability-detection"],
-    },
-    "qwen2.5-32b-instruct": {
-        "name": "Qwen 2.5 32B",
-        "context_window": 32768,
-        "category": "CODE_ANALYSIS",
-        "use_cases": ["solidity-analysis", "security-patterns"],
-    },
-    "qwen2.5-coder-32b-instruct": {
-        "name": "Qwen 2.5 Coder 32B",
-        "context_window": 32768,
-        "category": "CODE_SECURITY",
-        "use_cases": ["code-review", "vulnerability-scanning"],
+    "abab6-chat": {
+        "name": "MiniMax M2",
+        "context_window": 8192,
+        "category": "BASIC",
+        "use_cases": ["simple-analysis"],
     },
 }
 
 
-class QwenProvider:
-    """Qwen provider"""
+class MiniMaxProvider:
+    """MiniMax AI provider for SoliGuard security analysis"""
 
-    def __init__(self, config: Optional[QwenConfig] = None):
-        self.config = config or QwenConfig(api_key=os.getenv("DASHSCOPE_API_KEY", ""))
+    def __init__(self, config: Optional[MiniMaxConfig] = None):
+        self.config = config or MiniMaxConfig(
+            api_key=os.getenv("MINIMAX_API_KEY", ""),
+            api_id=os.getenv("MINIMAX_API_ID", ""),
+        )
         self._client = None
 
         self.total_requests = 0
         self.failed_requests = 0
 
-        logger.info(f"QwenProvider initialized: {self.config.model}")
+        logger.info(f"MiniMaxProvider initialized: {self.config.model}")
 
     async def generate(
         self,
@@ -100,7 +89,7 @@ class QwenProvider:
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         **kwargs,
-    ) -> QwenResponse:
+    ) -> MiniMaxResponse:
         """Generate response from prompt"""
         try:
             import httpx
@@ -117,23 +106,21 @@ class QwenProvider:
                 "model": model,
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": temperature or self.config.temperature,
+                "max_tokens": max_tokens or self.config.max_tokens,
             }
-
-            if max_tokens:
-                payload["max_tokens"] = max_tokens
 
             payload.update(kwargs)
 
             async with httpx.AsyncClient(timeout=self.config.timeout) as client:
                 response = await client.post(
-                    f"{self.config.base_url}/chat/completions",
+                    f"{self.config.base_url}?GroupId={self.config.api_id}",
                     json=payload,
                     headers=headers,
                 )
                 data = response.json()
 
                 if "choices" in data and len(data["choices"]) > 0:
-                    return QwenResponse(
+                    return MiniMaxResponse(
                         content=data["choices"][0]["message"]["content"],
                         model=model,
                         usage=data.get("usage", {}),
@@ -142,11 +129,13 @@ class QwenProvider:
                     )
                 else:
                     self.failed_requests += 1
-                    return QwenResponse(content="", model=model, finish_reason="error")
+                    return MiniMaxResponse(
+                        content="", model=model, finish_reason="error"
+                    )
         except Exception as e:
             self.failed_requests += 1
-            logger.error(f"Qwen generate error: {e}")
-            return QwenResponse(
+            logger.error(f"MiniMax generate error: {e}")
+            return MiniMaxResponse(
                 content="", model=model or self.config.model, finish_reason="error"
             )
 
@@ -172,7 +161,7 @@ class QwenProvider:
             async with httpx.AsyncClient(timeout=self.config.timeout) as client:
                 async with client.stream(
                     "POST",
-                    f"{self.config.base_url}/chat/completions",
+                    f"{self.config.base_url}?GroupId={self.config.api_id}",
                     json=payload,
                     headers=headers,
                 ) as resp:
@@ -180,31 +169,44 @@ class QwenProvider:
                         if line:
                             yield line
         except Exception as e:
-            logger.error(f"Qwen stream error: {e}")
+            logger.error(f"MiniMax stream error: {e}")
             yield f'{{"error": "{str(e)}"}}'
 
     def get_statistics(self) -> Dict[str, Any]:
         return {
-            "provider": "qwen",
+            "provider": "minimax",
             "model": self.config.model,
             "total_requests": self.total_requests,
             "failed_requests": self.failed_requests,
+            "available_models": len(MODELS),
         }
 
     def is_available(self) -> bool:
-        return bool(self.config.api_key)
+        return bool(self.config.api_key and self.config.api_id)
 
 
-def create_qwen_provider(
-    api_key: Optional[str] = None, model: str = "qwen-plus", **kwargs
-) -> QwenProvider:
-    config = QwenConfig(
-        api_key=api_key or os.getenv("DASHSCOPE_API_KEY", ""),
+def create_minimax_provider(
+    api_key: Optional[str] = None,
+    api_id: Optional[str] = None,
+    model: str = "abab6.5s-chat",
+    **kwargs,
+) -> MiniMaxProvider:
+    config = MiniMaxConfig(
+        api_key=api_key or os.getenv("MINIMAX_API_KEY", ""),
+        api_id=api_id or os.getenv("MINIMAX_API_ID", ""),
         model=model,
-        **{k: v for k, v in kwargs.items() if k in ["temperature", "max_tokens"]},
+        **{
+            k: v
+            for k, v in kwargs.items()
+            if k in ["temperature", "max_tokens", "timeout", "base_url"]
+        },
     )
-    return QwenProvider(config)
+    return MiniMaxProvider(config)
 
 
 def list_available_models() -> List[str]:
     return list(MODELS.keys())
+
+
+def get_model_info(model: str) -> Dict[str, Any]:
+    return MODELS.get(model, {"name": model, "category": "UNKNOWN"})

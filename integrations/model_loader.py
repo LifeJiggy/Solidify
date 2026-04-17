@@ -1,5 +1,5 @@
 """
-SoliGuard Model Loader
+Solidify Model Loader
 Dynamic model loading and management
 
 Author: Peace Stephen (Tech Lead)

@@ -1,5 +1,5 @@
 """
-SoliGuard MCP Server
+Solidify MCP Server
 MCP server implementation
 
 Author: Peace Stephen (Tech Lead)

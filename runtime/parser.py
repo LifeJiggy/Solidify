@@ -1,5 +1,5 @@
 """
-SoliGuard Runtime Parser
+Solidify Runtime Parser
 Command and input parsing
 
 Author: Peace Stephen (Tech Lead)
@@ -526,7 +526,7 @@ class ArgumentParser:
     - Subcommands
     """
     
-    def __init__(self, prog: str = "soliguard"):
+    def __init__(self, prog: str = "Solidify"):
         self.prog = prog
         self._positional: List[Tuple[str, Dict[str, Any]]] = []
         self._optional: List[Tuple[str, Dict[str, Any]]] = []

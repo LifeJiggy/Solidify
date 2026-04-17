@@ -1,5 +1,5 @@
 """
-SoliGuard Centralization Hunter
+Solidify Centralization Hunter
 Hunt for centralization risks with comprehensive detection
 
 Author: Peace Stephen (Tech Lead)
@@ -642,7 +642,7 @@ class CentralizationHunter:
                 {
                     "tool": {
                         "driver": {
-                            "name": "SoliGuard Centralization Hunter",
+                            "name": "Solidify Centralization Hunter",
                             "rules": [
                                 {
                                     "id": f.cwe_id or f.pattern.value,

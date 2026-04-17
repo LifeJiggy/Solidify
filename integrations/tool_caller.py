@@ -1,5 +1,5 @@
 """
-SoliGuard Tool Caller
+Solidify Tool Caller
 Dynamic tool calling and function execution
 
 Author: Peace Stephen (Tech Lead)

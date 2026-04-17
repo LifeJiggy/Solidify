@@ -1,4 +1,4 @@
-# 🔐 SoliGuard — Final Foundation Document
+# 🔐 Solidify — Final Foundation Document
 **GDG Abuja × Build with AI Sprint Hackathon**
 **Tech Lead: Peace Stephen (ArkhAngelLifeJiggy)**
 **Security Lead: Joel Emmanuel Adinoyi**
@@ -7,7 +7,7 @@
 
 ## 🧠 Project Identity
 
-**Name:** SoliGuard
+**Name:** Solidify
 **Tagline:** *"Catch vulnerabilities before attackers do."*
 **Category:** AI-Powered Web3 Security Tool
 **Stack:** Gemini API + Python (FastAPI) + React
@@ -25,7 +25,7 @@ Security is currently the biggest bottleneck in the blockchain space. Millions o
 
 ## ✅ Proposed Solution
 
-A **web-based AI smart contract analyzer**. Developers paste, upload, or provide a contract address — and SoliGuard acts as an automated security researcher.
+A **web-based AI smart contract analyzer**. Developers paste, upload, or provide a contract address — and Solidify acts as an automated security researcher.
 
 It will:
 - Scan Solidity code for known vulnerability patterns
@@ -144,7 +144,7 @@ soligard/
 
 ### Master System Prompt
 ```
-You are SoliGuard, an expert smart contract security auditor powered by Gemini.
+You are Solidify, an expert smart contract security auditor powered by Gemini.
 
 Analyze the provided Solidity smart contract code and return a structured security audit.
 
@@ -318,9 +318,9 @@ axios
 4. **Demo 2 (45s)** — Upload `.sol` file → export PDF audit report
 5. **Demo 3 (45s)** — Enter contract address → on-chain scan result
 6. **Architecture (30s)** — Peace explains Gemini prompt layer in one sentence
-7. **Close (30s)** — "SoliGuard is the first line of defense every Web3 developer deserves."
+7. **Close (30s)** — "Solidify is the first line of defense every Web3 developer deserves."
 
 ---
 
-*Built with 🔐 by Team SoliGuard | GDG Abuja × Build with AI Sprint*
+*Built with 🔐 by Team Solidify | GDG Abuja × Build with AI Sprint*
 *Peace · Joel · Mayowa · Yusuf · Abubakar*

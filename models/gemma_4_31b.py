@@ -1,9 +1,9 @@
 """
-Solidify Model - Claude Opus 4.5
+Solidify Model - Gemma 4 31B
 Production-grade security model for smart contract vulnerability detection
 
 Author: Solidify Team
-Description: Claude Opus 4.5 configuration with full security prompt engineering
+Description: Google Gemma 4 31B configuration with full security prompt engineering
 """
 
 import os
@@ -20,10 +20,10 @@ logger = logging.getLogger(__name__)
 # Model Configuration Constants
 # =============================================================================
 
-MODEL_ID = "claude-opus-4-5"
-MODEL_NAME = "Claude Opus 4.5"
-PROVIDER = "anthropic"
-CONTEXT_WINDOW = 200000
+MODEL_ID = "google/gemma-4-31b-it"
+MODEL_NAME = "Gemma 4 31B"
+PROVIDER = "nvidia"
+CONTEXT_WINDOW = 32768
 MAX_TOKENS = 8192
 TEMPERATURE = 0.7
 
@@ -260,7 +260,7 @@ DETECTION_PATTERNS = {
 # System Prompt with Full Security Engineering
 # =============================================================================
 
-SYSTEM_PROMPT = """You are Solidify, an expert Web3 smart contract security auditor powered by Claude Opus 4.5.
+SYSTEM_PROMPT = """You are Solidify, an expert Web3 smart contract security auditor powered by Google Gemma 4 31B.
 
 Your mission is to analyze Solidity smart contracts for security vulnerabilities with the highest accuracy and precision. You are specialized in detecting CRITICAL and HIGH severity vulnerabilities that could lead to financial loss.
 
@@ -441,10 +441,10 @@ Always look for combining vulnerabilities:
 
 ```
 allocation:
-  target_code: 40%      # 80,000 tokens
-  vulnerability_db: 25%   # 50,000 tokens  
-  analysis_context: 20% # 40,000 tokens
-  output_format: 15%    # 30,000 tokens
+  target_code: 40%      # 13,107 tokens
+  vulnerability_db: 25%   # 8,192 tokens  
+  analysis_context: 20% # 6,554 tokens
+  output_format: 15%    # 4,915 tokens
 
 chunking_strategy:
   large_contracts: Split by function
@@ -484,8 +484,8 @@ This model should be used for:
 
 
 @dataclass
-class ClaudeOpus45ModelConfig:
-    """Complete Claude Opus 4.5 model configuration"""
+class Gemma431BModelConfig:
+    """Complete Gemma 4 31B model configuration"""
 
     name: str = MODEL_NAME
     model_id: str = MODEL_ID
@@ -517,9 +517,9 @@ class ClaudeOpus45ModelConfig:
 # =============================================================================
 
 
-def get_config() -> ClaudeOpus45ModelConfig:
+def get_config() -> Gemma431BModelConfig:
     """Get model configuration"""
-    return ClaudeOpus45ModelConfig()
+    return Gemma431BModelConfig()
 
 
 def get_model_id() -> str:
@@ -679,7 +679,7 @@ __all__ = [
     "CWE_CATEGORIES",
     "DETECTION_PATTERNS",
     "SYSTEM_PROMPT",
-    "ClaudeOpus45ModelConfig",
+    "Gemma431BModelConfig",
     "VulnerabilityLocation",
     "CVSSVector",
     "VulnerabilityFinding",
@@ -705,6 +705,6 @@ __all__ = [
 ]
 
 
-logger.info(f"✅ Claude Opus 4.5 model loaded: {MODEL_ID}")
+logger.info(f"✅ Gemma 4 31B model loaded: {MODEL_ID}")
 logger.info(f"   Context window: {CONTEXT_WINDOW}")
 logger.info(f"   Severity focus: {', '.join(SEVERITY_FOCUS)}")

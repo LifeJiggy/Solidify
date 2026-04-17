@@ -1,4 +1,4 @@
-"""StreamMixin - Unified streaming for all SoliGuard providers"""
+"""StreamMixin - Unified streaming for all Solidify providers"""
 
 import asyncio
 import json

@@ -1,5 +1,5 @@
 """
-SoliGuard Validation Rules
+Solidify Validation Rules
 Validation rules for smart contract syntax and semantics
 
 Author: Peace Stephen (Tech Lead)

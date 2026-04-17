@@ -1,5 +1,5 @@
 """
-SoliGuard Custom Hooks
+Solidify Custom Hooks
 Custom hooks for smart contract security analysis and transformation
 
 Author: Peace Stephen (Tech Lead)

@@ -1,5 +1,5 @@
 """
-SoliGuard Gemini Client
+Solidify Gemini Client
 AI-powered smart contract analysis using Google Gemini
 
 Author: Peace Stephen (Tech Lead)
@@ -77,7 +77,7 @@ class AuditResult:
 
 class GeminiClient:
     """
-    Google Gemini API client for SoliGuard
+    Google Gemini API client for Solidify
     
     Features:
     - Synchronous and asynchronous generation
@@ -377,7 +377,7 @@ Do not include any text outside the JSON. Start with {{ and end with }}.
             Structured AuditResult
         """
         # Build audit prompt
-        audit_prompt = f"""You are SoliGuard, an expert smart contract security auditor.
+        audit_prompt = f"""You are Solidify, an expert smart contract security auditor.
 
 Analyze the following Solidity contract and return a structured security audit in JSON format.
 

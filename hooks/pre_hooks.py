@@ -1,5 +1,5 @@
 """
-SoliGuard Pre Hooks
+Solidify Pre Hooks
 Pre-analysis hooks for smart contract security analysis
 
 Author: Peace Stephen (Tech Lead)

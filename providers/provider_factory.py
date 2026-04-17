@@ -1,5 +1,5 @@
 """
-SoliGuard Provider Factory
+Solidify Provider Factory
 Factory for creating provider instances
 
 Author: Peace Stephen (Tech Lead)

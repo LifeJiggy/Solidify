@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SoliGuard Main Entry Point
+Solidify Main Entry Point
 Web3 Smart Contract Security Auditor
 
 Author: Peace Stephen (Tech Lead)
@@ -23,7 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 VERSION = "1.0.0"
-APP_NAME = "SoliGuard"
+APP_NAME = "Solidify"
 DESCRIPTION = "Web3 Smart Contract Security Auditor"
 
 
@@ -33,35 +33,121 @@ DESCRIPTION = "Web3 Smart Contract Security Auditor"
 
 
 def cmd_audit(args: argparse.Namespace) -> None:
-    """Run code audit"""
-    from commands.commands import AuditCommand
+    """Run code audit using provider"""
+    from providers.provider_factory import create_provider
 
-    cmd = AuditCommand()
-    result = asyncio.run(
-        cmd.execute(
-            code=args.contract_code or "",
-            file=args.file or "",
-            chain=args.chain or "ethereum",
-            provider=args.provider or "gemini",
-            include_exploits=args.exploits,
-        )
-    )
+    provider = create_provider(args.provider or "nvidia")
+    if not provider:
+        print("Error: Failed to create provider")
+        return
 
-    if result.success:
-        print(result.output)
+    contract_code = ""
+    if args.file:
+        try:
+            with open(args.file, "r", encoding="utf-8") as f:
+                contract_code = f.read()
+        except Exception as e:
+            print(f"Error reading file: {e}")
+            return
+    elif args.contract_code:
+        contract_code = args.contract_code
+
+    if not contract_code:
+        print("Error: No contract code provided")
+        return
+
+    import asyncio
+
+    result = asyncio.run(provider.generate(contract_code))
+
+    if hasattr(result, "content"):
+        print(result.content)
     else:
-        print(f"Error: {result.error}", file=sys.stderr)
-        sys.exit(1)
+        print(result)
 
 
 def cmd_hunt(args: argparse.Namespace) -> None:
-    """Run vulnerability hunt"""
-    from hunts.reentrancy_hunter import hunt_reentrancy
+    """Run vulnerability hunt - Web3 Smart Contract Security"""
 
-    findings = hunt_reentrancy(args.contract_code or "")
-    print(f"Found {len(findings)} potential issues")
-    for f in findings:
-        print(f"  - {f.get('type')}: {f.get('description')}")
+    # Handle ask mode - ask security questions directly
+    if args.ask:
+        asyncio.run(cmd_hunt_ask(args))
+        return
+
+    # Run Web3 Solidity hunt
+    if args.url or args.file or args.address:
+        asyncio.run(cmd_hunt_advanced(args))
+    else:
+        print("SoliGuard Hunt - Web3 Smart Contract Security Auditor")
+        print("")
+        print("Usage:")
+        print(
+            "  python main.py hunt --file <contract.sol>                    # Analyze Solidity file"
+        )
+        print(
+            "  python main.py hunt --url <url>                              # Fetch from URL"
+        )
+        print(
+            "  python main.py hunt --address <addr> --chain ethereum        # On-chain analysis"
+        )
+        print(
+            "  python main.py hunt --ask 'how does reentrancy work?'        # Ask question"
+        )
+        print("")
+        print("Options:")
+        print("  --poc          Generate proof-of-concept exploits")
+        print("  --patch        Generate secure patch recommendations")
+        print("  --type <type>  Vulnerability type (reentrancy, overflow, etc)")
+        print("  -p <provider>  Provider (qwen, nvidia, openai, anthropic)")
+        print("  -m <model>     Model to use")
+
+
+async def cmd_hunt_ask(args: argparse.Namespace) -> None:
+    """Handle ask mode - answer security questions"""
+
+    provider_name = args.provider or "qwen"
+    question = args.ask
+
+    print(f"\n{'=' * 60}")
+    print(f"  SoliGuard Ask Mode")
+    print(f"{'=' * 60}")
+    print(f"  Provider: {provider_name}")
+    print(f"  Question: {question}")
+    print(f"{'=' * 60}\n")
+
+    from providers.provider_factory import create_provider
+
+    provider = create_provider(provider_name)
+
+    if not provider:
+        print(f"  [ERROR] Failed to create provider: {provider_name}")
+        return
+
+    # Use system prompt from hunting_prompt.py
+    prompt = f"""You are a smart contract security expert at SoliGuard. Answer this question thoroughly:
+
+Question: {question}
+
+Provide a detailed explanation focusing on:
+1. What the vulnerability/concept is
+2. How to identify it in Solidity code
+3. How to exploit it (for educational purposes)
+4. How to fix and secure against it
+5. Real-world examples if relevant
+
+Be specific to Web3/Solidity context."""
+
+    try:
+        response = await provider.generate(prompt)
+
+        if hasattr(response, "content"):
+            print(response.content)
+        elif isinstance(response, dict):
+            print(response.get("content", str(response)))
+        else:
+            print(response)
+    except Exception as e:
+        print(f"  [ERROR] {e}")
 
 
 async def cmd_hunt_advanced(args: argparse.Namespace) -> None:
@@ -84,7 +170,7 @@ async def cmd_hunt_advanced(args: argparse.Namespace) -> None:
     )
 
     print(f"\n{'=' * 60}")
-    print(f"  SoliGuard Hunt Mode")
+    print(f"  Solidify Hunt Mode")
     print(f"{'=' * 60}")
     print(f"  Provider: {provider_name}")
     print(f"  Model: {model}")
@@ -100,18 +186,16 @@ async def cmd_hunt_advanced(args: argparse.Namespace) -> None:
     if args.url:
         print(f"  [FETCHING] Fetching content from {args.url}...")
         try:
-            import aiohttp
+            import httpx
 
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    args.url, timeout=aiohttp.ClientTimeout(total=30)
-                ) as resp:
-                    if resp.status == 200:
-                        contract_code = await resp.text()
-                        print(f"  [OK] Fetched {len(contract_code)} characters")
-                    else:
-                        print(f"  [ERROR] Failed to fetch: HTTP {resp.status}")
-                        return
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.get(args.url)
+                if response.status_code == 200:
+                    contract_code = response.text
+                    print(f"  [OK] Fetched {len(contract_code)} characters")
+                else:
+                    print(f"  [ERROR] Failed to fetch: HTTP {response.status_code}")
+                    return
         except Exception as e:
             print(f"  [ERROR] Error fetching URL: {e}")
             return
@@ -270,22 +354,22 @@ Provide a detailed security analysis focusing ONLY on CRITICAL and HIGH severity
 
 def cmd_scan(args: argparse.Namespace) -> None:
     """Quick vulnerability scan"""
-    from vuln_detection.detector import VulnerabilityDetector
-
-    detector = VulnerabilityDetector()
-    findings = detector.scan(args.contract_code or "")
-    print(f"Scan complete: {len(findings)} findings")
+    print("Scanning not fully implemented - use hunt command instead")
+    print("Available: python main.py hunt --file <file.sol>")
 
 
 def cmd_report(args: argparse.Namespace) -> None:
     """Generate audit report"""
-    from system_prompt.report_prompt import generate_report
+    from system_prompt.report_prompt import ReportPrompt, ReportData
 
-    report = generate_report(
-        findings=args.findings or [],
-        format=args.format or "markdown",
+    prompt = ReportPrompt()
+    data = ReportData(
         contract_name=args.contract_name or "Contract",
+        vulnerabilities=args.findings or [],
+        risk_score=0.0,
+        summary="Report generated via CLI",
     )
+    report = prompt.build_markdown(data)
     print(report)
 
 
@@ -321,7 +405,7 @@ def cmd_version(args: argparse.Namespace) -> None:
 def start_repl(args: argparse.Namespace) -> None:
     """Start interactive REPL"""
     print("=" * 60)
-    print("  SoliGuard REPL v1.0")
+    print("  Solidify REPL v1.0")
     print("  Web3 Smart Contract Security Auditor")
     print("=" * 60)
     print()
@@ -336,7 +420,7 @@ def start_repl(args: argparse.Namespace) -> None:
     # Simple REPL loop
     while True:
         try:
-            cmd = input("soliguard> ").strip()
+            cmd = input("Solidify> ").strip()
             if not cmd:
                 continue
             if cmd in ["exit", "quit", "q"]:
@@ -412,39 +496,70 @@ Other commands:
         "--exploits", action="store_true", help="Include exploit PoCs"
     )
 
-    # Hunt command
-    hunt_parser = subparsers.add_parser("hunt", help="Hunt for vulnerabilities")
-    hunt_parser.add_argument("--code", type=str, help="Contract code")
-    hunt_parser.add_argument(
-        "-t", "--type", type=str, default="reentrancy", help="Vulnerability type"
+    # Hunt command - Web3 + Web2 Vulnerability Hunt
+    hunt_parser = subparsers.add_parser(
+        "hunt", help="Hunt for vulnerabilities (Web3 Solidity + Web2 JS)"
     )
-    hunt_parser.add_argument("--url", type=str, help="URL to fetch contract from")
-    hunt_parser.add_argument("-f", "--file", type=str, help="Contract file path")
+
+    # Input sources
+    hunt_parser.add_argument("--target", "-t", help="Target URL or contract address")
+    hunt_parser.add_argument("--url", help="Target URL to fetch contract/JS from")
+    hunt_parser.add_argument("--file", "-f", help="Local file to scan (.sol, .js, .ts)")
+    hunt_parser.add_argument("--folder", help="Folder with files to scan")
+    hunt_parser.add_argument("--address", help="Contract address for on-chain analysis")
     hunt_parser.add_argument(
-        "-p",
-        "--provider",
-        type=str,
-        default="nvidia",
-        help="AI provider (nvidia, openai, anthropic, google, groq, qwen, ollama)",
+        "--js", help="JavaScript file to analyze for vulnerabilities"
     )
+
+    # Analysis options
     hunt_parser.add_argument(
-        "-m",
-        "--model",
-        type=str,
-        default="nvidia/llama-3.1-nemotron-70b-instruct",
-        help="Model to use",
+        "--task", help="Hunt task (e.g., 'Find reentrancy', 'Exploit SQLi')"
     )
     hunt_parser.add_argument(
-        "--task",
-        type=str,
-        default="Find CRITICAL/HIGH security vulnerabilities in this smart contract",
-        help="Task description",
+        "--type",
+        help="Vulnerability type: reentrancy, overflow, access_control, sqli, xss, ssrf",
     )
     hunt_parser.add_argument(
-        "--no-stream", action="store_true", help="Disable streaming output"
+        "--chain", default="ethereum", help="Blockchain (ethereum, bsc, polygon)"
+    )
+    hunt_parser.add_argument("--model", "-m", help="Model to use")
+    hunt_parser.add_argument(
+        "--provider", "-p", default="qwen", help="AI provider (nvidia, qwen, openai)"
+    )
+
+    # Modes
+    hunt_parser.add_argument(
+        "--no-stream", action="store_true", help="Disable streaming"
+    )
+    hunt_parser.add_argument("--quiet", "-q", action="store_true", help="Quiet mode")
+    hunt_parser.add_argument(
+        "--aggressive", "-a", action="store_true", help="Aggressive deep scan"
+    )
+
+    # Analysis features
+    hunt_parser.add_argument("--poc", action="store_true", help="Generate PoC exploits")
+    hunt_parser.add_argument(
+        "--patch", action="store_true", help="Generate secure patches"
     )
     hunt_parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Verbose output"
+        "--explain", action="store_true", help="Explain vulnerability concepts"
+    )
+    hunt_parser.add_argument(
+        "--exploit", action="store_true", help="Show how to exploit"
+    )
+    hunt_parser.add_argument(
+        "--analyze", action="store_true", help="Deep analysis mode"
+    )
+    hunt_parser.add_argument(
+        "--report", action="store_true", help="Generate full report"
+    )
+    hunt_parser.add_argument(
+        "--ext", default=".sol,.js", help="File extensions (comma-separated)"
+    )
+
+    # Ask mode
+    hunt_parser.add_argument(
+        "--ask", help="Ask security question (e.g., 'how to exploit SQL injection?')"
     )
 
     # Scan command

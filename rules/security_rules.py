@@ -1,5 +1,5 @@
 """
-SoliGuard Security Rules
+Solidify Security Rules
 Security baseline rules for smart contract analysis
 
 Author: Peace Stephen (Tech Lead)

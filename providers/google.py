@@ -1,5 +1,5 @@
 """
-SoliGuard Google Provider
+Solidify Google Provider
 Google Gemini API integration
 
 Author: Peace Stephen (Tech Lead)

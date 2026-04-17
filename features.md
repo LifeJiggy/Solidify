@@ -1,11 +1,11 @@
-# 🔐 SoliGuard — 40-Feature Roadmap
+# 🔐 Solidify — 40-Feature Roadmap
 **TCP Web3 Offensive Security Engine**
-**Ghost = Web2 | SoliGuard = Web3**
+**Ghost = Web2 | Solidify = Web3**
 *By Peace Stephen (ArkhAngelLifeJiggy) — The Coding Peace*
 
 ---
 
-> SoliGuard is not just an auditor. It is an autonomous Web3 security researcher —
+> Solidify is not just an auditor. It is an autonomous Web3 security researcher —
 > scanning, reasoning, exploiting, and patching smart contracts across every major chain.
 
 ---
@@ -57,9 +57,9 @@
 
 
 | 37 | Audit API (REST) for External Integrations | Audit Intelligence | 🟢 Roadmap |
-| 38 | VS Code Extension (SoliGuard in editor) | Audit Intelligence | 🟢 Roadmap |
+| 38 | VS Code Extension (Solidify in editor) | Audit Intelligence | 🟢 Roadmap |
 | 39 | CI/CD Pipeline Integration (GitHub Actions) | Audit Intelligence | 🟢 Roadmap |
-| 40 | SoliGuard Agent Mode (autonomous multi-contract sweep) | Audit Intelligence | 🟢 Roadmap |
+| 40 | Solidify Agent Mode (autonomous multi-contract sweep) | Audit Intelligence | 🟢 Roadmap |
 
 ---
 
@@ -113,7 +113,7 @@ Drag-and-drop or click-to-upload a `.sol` file. Backend reads, extracts Solidity
 ### 05 — On-Chain Contract Scan (Etherscan)
 **Category:** Web3 Integration | **Priority:** 🔴 Critical
 
-User inputs a contract address. SoliGuard fetches verified source from Etherscan API, falls back to Sourcify if unverified. Audits the live deployed contract.
+User inputs a contract address. Solidify fetches verified source from Etherscan API, falls back to Sourcify if unverified. Audits the live deployed contract.
 
 ```python
 # chain_fetcher.py
@@ -129,7 +129,7 @@ async def fetch_contract_source(address: str, chain: str) -> str:
 ### 06 — PDF Audit Report Export
 **Category:** Audit Intelligence | **Priority:** 🔴 Critical
 
-One-click PDF export of the full audit. Branded SoliGuard report with cover page, executive summary, vulnerability table, code diffs, and recommendations. Built with `reportlab`.
+One-click PDF export of the full audit. Branded Solidify report with cover page, executive summary, vulnerability table, code diffs, and recommendations. Built with `reportlab`.
 
 ---
 
@@ -143,7 +143,7 @@ Detects when two or more vulnerabilities can be chained together for amplified i
 ### 08 — Proof-of-Concept Exploit Generation
 **Category:** Exploitation | **Priority:** 🟠 High
 
-For confirmed HIGH/CRITICAL vulns, SoliGuard generates a working Solidity PoC exploit contract. Shows exactly how an attacker would trigger the vulnerability — for educational and verification purposes within authorized scope.
+For confirmed HIGH/CRITICAL vulns, Solidify generates a working Solidity PoC exploit contract. Shows exactly how an attacker would trigger the vulnerability — for educational and verification purposes within authorized scope.
 
 ```solidity
 // Generated PoC: Reentrancy Attack
@@ -188,7 +188,7 @@ Scans for price oracle dependencies, single-block state manipulation points, and
 ### 13 — Multi-Chain Support (BSC, Polygon, Arbitrum, Base)
 **Category:** Web3 Integration | **Priority:** 🟠 High
 
-Chain selector in the UI. SoliGuard routes on-chain fetch requests to the correct block explorer API per chain: Etherscan (ETH), BscScan (BSC), PolygonScan, Arbiscan, Basescan.
+Chain selector in the UI. Solidify routes on-chain fetch requests to the correct block explorer API per chain: Etherscan (ETH), BscScan (BSC), PolygonScan, Arbiscan, Basescan.
 
 ---
 
@@ -230,7 +230,7 @@ Each finding includes an AI confidence percentage (0–100%). Flags whether a vu
 ### 19 — Gas Optimization Analysis
 **Category:** Audit Intelligence | **Priority:** 🟡 Medium
 
-Beyond security, SoliGuard identifies gas inefficiencies: redundant storage reads, unoptimized loops, missing `unchecked` blocks for safe math, and calldata vs memory parameter misuse.
+Beyond security, Solidify identifies gas inefficiencies: redundant storage reads, unoptimized loops, missing `unchecked` blocks for safe math, and calldata vs memory parameter misuse.
 
 ---
 
@@ -286,7 +286,7 @@ Analyzes tokenomics logic: unlimited mint, broken burn mechanics, fee-on-transfe
 ### 27 — Cross-Contract Interaction Analysis
 **Category:** Audit Intelligence | **Priority:** 🟡 Medium
 
-When a contract makes external calls to other contracts, SoliGuard traces the dependency chain. Flags trust assumptions, unchecked return values, and reentrancy across contract boundaries.
+When a contract makes external calls to other contracts, Solidify traces the dependency chain. Flags trust assumptions, unchecked return values, and reentrancy across contract boundaries.
 
 ---
 
@@ -300,7 +300,7 @@ Falls back to Sourcify's decentralized source registry when Etherscan has no ver
 ### 29 — Foundry/Hardhat Test Case Generator
 **Category:** Audit Intelligence | **Priority:** 🟡 Medium
 
-For every vulnerability found, SoliGuard generates a failing test case in Foundry (`forge test`) or Hardhat (`npx hardhat test`) format. Developers can run it immediately to reproduce the issue.
+For every vulnerability found, Solidify generates a failing test case in Foundry (`forge test`) or Hardhat (`npx hardhat test`) format. Developers can run it immediately to reproduce the issue.
 
 ---
 
@@ -314,7 +314,7 @@ Export the full audit as a clean `.md` file. Ideal for GitHub issues, security d
 ### 31 — Contract Diff Auditor (v1 vs v2)
 **Category:** Audit Intelligence | **Priority:** 🟡 Medium
 
-Upload or paste two versions of a contract. SoliGuard diffs them, identifies what changed, and audits only the delta — flagging if new vulnerabilities were introduced in the update.
+Upload or paste two versions of a contract. Solidify diffs them, identifies what changed, and audits only the delta — flagging if new vulnerabilities were introduced in the update.
 
 ---
 
@@ -328,7 +328,7 @@ Instead of waiting for a full audit response, stream findings in real-time via S
 ### 33 — Multi-File / Multi-Contract Project Audit
 **Category:** Audit Intelligence | **Priority:** 🟡 Medium
 
-Upload a `.zip` of a full Hardhat/Foundry project. SoliGuard extracts all `.sol` files, maps imports, builds a dependency graph, and audits the entire codebase as one unit.
+Upload a `.zip` of a full Hardhat/Foundry project. Solidify extracts all `.sol` files, maps imports, builds a dependency graph, and audits the entire codebase as one unit.
 
 ---
 
@@ -356,25 +356,25 @@ Identifies wallet drainer contract signatures: `setApprovalForAll` abuse, `permi
 ### 37 — Audit REST API (External Integrations)
 **Category:** Audit Intelligence | **Priority:** 🟢 Roadmap
 
-Public API key-gated endpoint. Developers integrate SoliGuard audits directly into their own tools, IDEs, or deployment pipelines. Foundation for SoliGuard as a TCP service product.
+Public API key-gated endpoint. Developers integrate Solidify audits directly into their own tools, IDEs, or deployment pipelines. Foundation for Solidify as a TCP service product.
 
 ---
 
 ### 38 — VS Code Extension
 **Category:** Audit Intelligence | **Priority:** 🟢 Roadmap
 
-SoliGuard lives inside the editor. Highlight any Solidity code → right-click → "Audit with SoliGuard". Inline vulnerability annotations appear as squiggles and hover tooltips.
+Solidify lives inside the editor. Highlight any Solidity code → right-click → "Audit with Solidify". Inline vulnerability annotations appear as squiggles and hover tooltips.
 
 ---
 
 ### 39 — CI/CD Pipeline Integration (GitHub Actions)
 **Category:** Audit Intelligence | **Priority:** 🟢 Roadmap
 
-GitHub Action that runs SoliGuard on every PR touching `.sol` files. Fails the pipeline if CRITICAL vulnerabilities are detected. Posts audit summary as a PR comment.
+GitHub Action that runs Solidify on every PR touching `.sol` files. Fails the pipeline if CRITICAL vulnerabilities are detected. Posts audit summary as a PR comment.
 
 ```yaml
 # .github/workflows/soligard.yml
-- name: SoliGuard Audit
+- name: Solidify Audit
   uses: tcp/soligard-action@v1
   with:
     api_key: ${{ secrets.SOLIGARD_API_KEY }}
@@ -383,12 +383,12 @@ GitHub Action that runs SoliGuard on every PR touching `.sol` files. Fails the p
 
 ---
 
-### 40 — SoliGuard Agent Mode
+### 40 — Solidify Agent Mode
 **Category:** Audit Intelligence | **Priority:** 🟢 Roadmap
 
-Fully autonomous mode. Given a wallet address or protocol name, SoliGuard discovers all related contracts, fetches sources, audits each one, chains findings across contracts, and produces a complete ecosystem security report. No human input required after trigger.
+Fully autonomous mode. Given a wallet address or protocol name, Solidify discovers all related contracts, fetches sources, audits each one, chains findings across contracts, and produces a complete ecosystem security report. No human input required after trigger.
 
-> This is SoliGuard's Ghost moment. Autonomous. Recursive. Unstoppable.
+> This is Solidify's Ghost moment. Autonomous. Recursive. Unstoppable.
 
 ---
 
@@ -397,7 +397,7 @@ Fully autonomous mode. Given a wallet address or protocol name, SoliGuard discov
 ```
 TCP Fleet
 ├── Ghost          → Web2 Offensive Security (DAST, recon, exploit)
-├── SoliGuard      → Web3 Offensive Security (smart contract audit, PoC, chain scan)
+├── Solidify      → Web3 Offensive Security (smart contract audit, PoC, chain scan)
 ├── AgentMesh      → Multi-agent orchestration
 ├── Universal-Memory → Persistent agent memory
 ├── Brain-Healer   → Agent self-repair
@@ -405,9 +405,9 @@ TCP Fleet
 └── AfterLife-AGI  → Long-horizon autonomous reasoning
 ```
 
-Ghost hunts Web2. SoliGuard hunts Web3. TCP owns both surfaces. 🔐
+Ghost hunts Web2. Solidify hunts Web3. TCP owns both surfaces. 🔐
 
 ---
 
 *The Coding Peace (TCP) — ArkhAngelLifeJiggy*
-*SoliGuard v1.0 Roadmap | GDG Abuja × Build with AI Sprint + Beyond*
+*Solidify v1.0 Roadmap | GDG Abuja × Build with AI Sprint + Beyond*

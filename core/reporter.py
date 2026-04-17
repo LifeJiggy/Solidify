@@ -1,5 +1,5 @@
 """
-SoliGuard Core Reporter
+Solidify Core Reporter
 Comprehensive reporting and analytics engine
 
 Author: Peace Stephen (Tech Lead)
@@ -301,7 +301,7 @@ class ReportGenerator:
                 report_type=report_type,
                 format=format,
                 created_at=datetime.utcnow().isoformat(),
-                generated_by="SoliGuard",
+                generated_by="Solidify",
                 tags=kwargs.get("tags", [])
             )
             
@@ -337,7 +337,7 @@ class ReportGenerator:
                     report_type=report_type,
                     format=format,
                     created_at=datetime.utcnow().isoformat(),
-                    generated_by="SoliGuard"
+                    generated_by="Solidify"
                 ),
                 data=None,
                 status=ReportStatus.FAILED,
@@ -363,7 +363,7 @@ class ReportGenerator:
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SoliGuard Report</title>
+    <title>Solidify Report</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         .header { background: #1a1a2e; color: white; padding: 20px; }
@@ -379,7 +379,7 @@ class ReportGenerator:
 </head>
 <body>
     <div class="header">
-        <h1>SoliGuard Security Report</h1>
+        <h1>Solidify Security Report</h1>
     </div>
 """
         
@@ -414,7 +414,7 @@ class ReportGenerator:
     
     def _format_markdown(self, data: Dict[str, Any]) -> str:
         """Format as Markdown"""
-        md = "# SoliGuard Security Report\n\n"
+        md = "# Solidify Security Report\n\n"
         
         for key, value in data.items():
             md += f"## {key}\n\n"

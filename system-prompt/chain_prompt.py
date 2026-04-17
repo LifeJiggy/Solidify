@@ -1,5 +1,5 @@
 """
-SoliGuard Chain Prompt
+Solidify Chain Prompt
 Multi-chain and cross-chain security prompts
 
 Author: Peace Stephen (Tech Lead)

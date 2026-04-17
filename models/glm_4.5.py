@@ -1,5 +1,5 @@
 """
-SoliGuard Model - GLM-4.5
+Solidify Model - GLM-4.5
 Production-grade Zhipu AI model for code review and solidity analysis
 
 Author: Peace Stephen (Tech Lead)
@@ -242,7 +242,7 @@ GAS_PATTERNS = {
 # System Prompt
 # =============================================================================
 
-SYSTEM_PROMPT = """You are SoliGuard, a Web3 smart contract security auditor powered by Zhipu AI GLM-4.5.
+SYSTEM_PROMPT = """You are Solidify, a Web3 smart contract security auditor powered by Zhipu AI GLM-4.5.
 
 This model is optimized for SOLIDITY CODE REVIEW and BEST PRACTICE auditing.
 

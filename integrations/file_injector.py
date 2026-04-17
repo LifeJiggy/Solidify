@@ -1,5 +1,5 @@
 """
-SoliGuard File Injector
+Solidify File Injector
 Dynamic file injection for context enrichment
 
 Author: Peace Stephen (Tech Lead)

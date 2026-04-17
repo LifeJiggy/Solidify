@@ -1,5 +1,5 @@
 """
-SoliGuard MCP Resources
+Solidify MCP Resources
 MCP resources for model context protocol
 
 Author: Peace Stephen (Tech Lead)

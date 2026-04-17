@@ -1,5 +1,5 @@
 """
-SoliGuard Task Executor
+Solidify Task Executor
 Execute security audit tasks
 
 Author: Peace Stephen (Tech Lead)

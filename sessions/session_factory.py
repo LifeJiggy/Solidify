@@ -1,5 +1,5 @@
 """
-SoliGuard Session Factory
+Solidify Session Factory
 Factory for creating sessions
 
 Author: Peace Stephen (Tech Lead)

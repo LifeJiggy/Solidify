@@ -1,5 +1,5 @@
 """
-SoliGuard Event Hooks
+Solidify Event Hooks
 Event-driven hooks for smart contract security analysis pipeline
 
 Author: Peace Stephen (Tech Lead)

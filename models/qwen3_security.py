@@ -1,8 +1,8 @@
 """
-SoliGuard Model - Qwen3 Security
+Solidify Model - Qwen3 Security
 Production-grade security model for smart contract vulnerability detection
 
-Author: SoliGuard Team
+Author: Solidify Team
 Description: Qwen3 Security configuration with full security prompt engineering
 """
 
@@ -260,7 +260,7 @@ DETECTION_PATTERNS = {
 # System Prompt with Full Security Engineering
 # =============================================================================
 
-SYSTEM_PROMPT = """You are SoliGuard, an expert Web3 smart contract security auditor powered by Qwen3 Security.
+SYSTEM_PROMPT = """You are Solidify, an expert Web3 smart contract security auditor powered by Qwen3 Security.
 
 Your mission is to analyze Solidity smart contracts for security vulnerabilities with the highest accuracy and precision. You are specialized in detecting CRITICAL and HIGH severity vulnerabilities that could lead to financial loss.
 

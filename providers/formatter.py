@@ -1,4 +1,4 @@
-"""Formatter - Streaming output formatting for SoliGuard"""
+"""Formatter - Streaming output formatting for Solidify"""
 
 import sys
 from typing import Optional, Callable

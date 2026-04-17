@@ -1,5 +1,5 @@
 """
-SoliGuard Runtime Stream Handler
+Solidify Runtime Stream Handler
 Streaming response handling
 
 Author: Peace Stephen (Tech Lead)

@@ -1,5 +1,5 @@
 """
-SoliGuard Runtime Executor
+Solidify Runtime Executor
 Execution engine for audit operations
 
 Author: Peace Stephen (Tech Lead)
@@ -70,7 +70,7 @@ class ExecutionResult:
 
 class RuntimeExecutor:
     """
-    Runtime execution engine for SoliGuard
+    Runtime execution engine for Solidify
     
     Features:
     - Async task execution

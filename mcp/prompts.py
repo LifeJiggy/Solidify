@@ -1,5 +1,5 @@
 """
-SoliGuard MCP Prompts
+Solidify MCP Prompts
 MCP prompt templates for smart contract security analysis
 
 Author: Peace Stephen (Tech Lead)
@@ -94,7 +94,7 @@ class SystemPromptBuilder(BasePromptBuilder):
         super().__init__(name)
         
     def build(self, context: PromptContext) -> List[PromptMessage]:
-        system_prompt = """You are SoliGuard, an AI-powered smart contract security auditor for the GDG Abuja × Build with AI Sprint Hackathon.
+        system_prompt = """You are Solidify, an AI-powered smart contract security auditor for the GDG Abuja × Build with AI Sprint Hackathon.
 
 Your capabilities include:
 - Static analysis of Solidity smart contracts

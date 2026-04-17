@@ -1,5 +1,5 @@
 """
-SoliGuard Runtime Loader Module
+Solidify Runtime Loader Module
 Dynamic module loading and dependency injection
 
 Author: Peace Stephen (Tech Lead)

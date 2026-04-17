@@ -1,4 +1,4 @@
-"""Streaming - Unified streaming utilities for all LLM providers in SoliGuard"""
+"""Streaming - Unified streaming utilities for all LLM providers in Solidify"""
 
 import asyncio
 import json

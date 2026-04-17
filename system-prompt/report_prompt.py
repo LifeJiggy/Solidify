@@ -1,5 +1,5 @@
 """
-SoliGuard Report Prompt
+Solidify Report Prompt
 Report generation prompts
 
 Author: Peace Stephen (Tech Lead)

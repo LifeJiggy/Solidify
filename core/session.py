@@ -1,5 +1,5 @@
 """
-SoliGuard Core Session
+Solidify Core Session
 Session management
 
 Author: Peace Stephen (Tech Lead)

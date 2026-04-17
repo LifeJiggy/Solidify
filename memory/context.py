@@ -1,5 +1,5 @@
 """
-SoliGuard Context
+Solidify Context
 Context management for smart contract security analysis
 
 Author: Peace Stephen (Tech Lead)

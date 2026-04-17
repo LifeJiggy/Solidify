@@ -1,5 +1,5 @@
 """
-SoliGuard Core Loader
+Solidify Core Loader
 Dynamic module loading and plugin system
 
 Author: Peace Stephen (Tech Lead)

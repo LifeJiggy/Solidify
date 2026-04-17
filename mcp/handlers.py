@@ -1,5 +1,5 @@
 """
-SoliGuard MCP Handlers
+Solidify MCP Handlers
 MCP handlers for model context protocol
 
 Author: Peace Stephen (Tech Lead)

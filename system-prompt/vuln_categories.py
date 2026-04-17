@@ -1,5 +1,5 @@
 """
-SoliGuard Vulnerability Categories
+Solidify Vulnerability Categories
 Vulnerability taxonomy and classification
 
 Author: Peace Stephen (Tech Lead)

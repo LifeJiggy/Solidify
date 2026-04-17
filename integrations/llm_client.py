@@ -1,5 +1,5 @@
 """
-SoliGuard LLM Client
+Solidify LLM Client
 Unified LLM client wrapper for multiple providers
 
 Author: Peace Stephen (Tech Lead)

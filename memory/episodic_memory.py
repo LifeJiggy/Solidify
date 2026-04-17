@@ -1,5 +1,5 @@
 """
-SoliGuard Episodic Memory
+Solidify Episodic Memory
 Episodic memory for storing security analysis sessions
 
 Author: Peace Stephen (Tech Lead)

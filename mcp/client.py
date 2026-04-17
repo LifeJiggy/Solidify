@@ -1,5 +1,5 @@
 """
-SoliGuard MCP Client
+Solidify MCP Client
 MCP client implementation
 
 Author: Peace Stephen (Tech Lead)

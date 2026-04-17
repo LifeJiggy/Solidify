@@ -1,5 +1,5 @@
 """
-SoliGuard Hunting Prompt
+Solidify Hunting Prompt
 Bug bounty hunting prompts
 
 Author: Peace Stephen (Tech Lead)

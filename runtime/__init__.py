@@ -1,5 +1,5 @@
 """
-SoliGuard Runtime Module
+Solidify Runtime Module
 Core runtime components for the Solidity security auditor.
 """
 

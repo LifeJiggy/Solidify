@@ -1,4 +1,4 @@
-# Team Tasks - SoliGuard Project
+# Team Tasks - Solidify Project
 
 ## Team Members & Roles
 
@@ -420,5 +420,5 @@
 
 ---
 
-*Team SoliGuard - GDG Abuja × Build with AI Sprint*
+*Team Solidify - GDG Abuja × Build with AI Sprint*
 *TCP (The Coding Peace) Ecosystem*

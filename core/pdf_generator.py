@@ -1,5 +1,5 @@
 """
-SoliGuard PDF Generator
+Solidify PDF Generator
 Generates professional PDF audit reports
 
 Author: Peace Stephen (Tech Lead)
@@ -45,7 +45,7 @@ class ReportConfig:
     include_summary: bool = True
     include_patches: bool = True
     include_recommendations: bool = True
-    company_name: str = "SoliGuard"
+    company_name: str = "Solidify"
     logo_path: Optional[str] = None
 
 
@@ -238,7 +238,7 @@ class PDFGenerator:
         """Add cover page"""
         # Logo/Title
         story.append(Spacer(1, 2 * inch))
-        story.append(Paragraph("🔐 SoliGuard", self.styles["ReportTitle"]))
+        story.append(Paragraph("🔐 Solidify", self.styles["ReportTitle"]))
         story.append(Paragraph("Smart Contract Security Audit Report", self.styles["ReportSubtitle"]))
         
         story.append(Spacer(1, 1.5 * inch))
@@ -451,10 +451,10 @@ class PDFGenerator:
         """
         story.append(Paragraph(methodology, self.styles["ReportBody"]))
         
-        # About SoliGuard
-        story.append(Paragraph("About SoliGuard", self.styles["SubsectionHeader"]))
+        # About Solidify
+        story.append(Paragraph("About Solidify", self.styles["SubsectionHeader"]))
         about = """
-        SoliGuard is an AI-powered smart contract security auditor developed by Team SoliGuard 
+        Solidify is an AI-powered smart contract security auditor developed by Team Solidify 
         at GDG Abuja × Build with AI Sprint Hackathon. It uses Google Gemini AI to analyze 
         Solidity contracts and identify security vulnerabilities.
         """
@@ -463,7 +463,7 @@ class PDFGenerator:
         # Disclaimer
         story.append(Paragraph("Disclaimer", self.styles["SubsectionHeader"]))
         disclaimer = """
-        This report is provided for informational purposes only. SoliGuard and its creators 
+        This report is provided for informational purposes only. Solidify and its creators 
         make no warranties about the completeness, reliability, or accuracy of this audit. 
         Any action you take based upon the information from this report is at your own risk.
         """

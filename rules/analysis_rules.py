@@ -1,5 +1,5 @@
 """
-SoliGuard Analysis Rules
+Solidify Analysis Rules
 Analysis rules for smart contract security scanning
 
 Author: Peace Stephen (Tech Lead)
