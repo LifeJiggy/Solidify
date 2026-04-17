@@ -13,9 +13,16 @@ import logging
 import sys
 import os
 import json
+from pathlib import Path
+from dotenv import load_dotenv
 
-logging.basicConfig(level=logging.INFO, format="%(message)s")
+load_dotenv()
+
+# Disable verbose logging
+logging.basicConfig(level=logging.WARNING, format="%(message)s")
 logger = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 VERSION = "1.0.0"
 APP_NAME = "Solidify"
@@ -91,7 +98,8 @@ async def cmd_ask(args: argparse.Namespace) -> None:
     """Answer security questions"""
     from providers.provider_factory import create_provider
 
-    provider = create_provider(args.provider or "nvidia")
+    model = args.model or "minimaxai/minimax-m2.5"
+    provider = create_provider(args.provider or "nvidia", model=model)
     if not provider:
         print(f"[ERROR] Cannot create provider")
         return
@@ -139,7 +147,7 @@ async def cmd_hunt_advanced(args: argparse.Namespace) -> None:
 
     from providers.provider_factory import create_provider
 
-    provider = create_provider(provider_name)
+    provider = create_provider(provider_name, model=model)
 
     if not provider:
         print(f"[ERROR] Cannot create provider: {provider_name}")
@@ -325,6 +333,14 @@ def create_parser() -> argparse.ArgumentParser:
     provider_sub = provider_parser.add_subparsers(dest="provider_action")
     provider_sub.add_parser("list", help="List providers")
 
+    # Ask command - ask security questions
+    ask_parser = subparsers.add_parser("ask", help="Ask security questions")
+    ask_parser.add_argument("question", help="Question to ask")
+    ask_parser.add_argument(
+        "--model", "-m", default="minimaxai/minimax-m2.5", help="Model"
+    )
+    ask_parser.add_argument("-p", "--provider", default="nvidia", help="Provider")
+
     # Version command
     version_parser = subparsers.add_parser("version", help="Show version")
 
@@ -340,7 +356,23 @@ def main():
         logging.getLogger().setLevel(logging.DEBUG)
 
     if not args.command:
-        start_repl(args)
+        # Default: show help or run hunt with default args
+        print("SoliGuard - Web3 Smart Contract Security Auditor")
+        print("Usage: python main.py hunt --file <contract.sol>")
+        print("       python main.py ask 'What is reentrancy?'")
+        print("       python main.py hunt --help")
+        return
+
+    if args.command == "ask":
+        asyncio.run(
+            cmd_ask(
+                argparse.Namespace(
+                    ask=args.question,
+                    provider=args.provider,
+                    model=args.model,
+                )
+            )
+        )
         return
 
     if args.command == "audit":
