@@ -64,6 +64,7 @@ export default function App() {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [streamOutput, setStreamOutput] = useState('');
+  const [streamProgress, setStreamProgress] = useState('');
   const [showAskModal, setShowAskModal] = useState(false);
   const [askQuestion, setAskQuestion] = useState('');
   const [askAnswer, setAskAnswer] = useState('');
@@ -91,23 +92,32 @@ export default function App() {
 
   const handleCommand = async (cmd) => {
     setLoading(true);
-    setStreamOutput('');
+    setStreamOutput('Starting ' + cmd + '...\n');
+    setStreamProgress('Starting');
     try {
       const result = await startAudit(contract, chain, { command: cmd });
       setTaskId(result.task_id);
-      // Poll for streaming results
+      
+      // Stream results in real-time
       const interval = setInterval(async () => {
-        const s = await getAuditStatus(result.task_id);
-        setStatus(s);
-        if (s.status === 'completed') {
-          clearInterval(interval);
-          const r = await getAuditReport(result.task_id);
-          setReport(r);
-          setStreamOutput(r.summary || 'Done');
+        try {
+          const s = await getAuditStatus(result.task_id);
+          setStatus(s);
+          setStreamProgress(s.status + ' (' + s.progress + '%)');
+          setStreamOutput(prev => prev + '\n' + s.status + '...');
+          
+          if (s.status === 'completed') {
+            clearInterval(interval);
+            const r = await getAuditReport(result.task_id);
+            setReport(r);
+            setStreamOutput('Complete!\n\n' + (r.summary || 'Audit done') + '\n\nVulnerabilities: ' + (r.vulnerabilities?.length || 0));
+          }
+        } catch (e) {
+          console.log(e);
         }
-      }, 2000);
+      }, 1500);
     } catch (e) {
-      alert('Error: ' + e.message);
+      setStreamOutput('Error: ' + e.message);
     }
     setLoading(false);
   };
@@ -214,33 +224,54 @@ export default function App() {
   };
 
   const handleDetectGas = async () => {
-    if (!contract) return;
+    setLoading(true);
+    setStreamOutput('Scanning for gas optimizations...\n');
     try {
       const result = await detectGas(contract);
-      alert('Gas optimizations: ' + JSON.stringify(result, null, 2));
+      const issues = result.optimizations || [];
+      if (issues.length > 0) {
+        setStreamOutput('Gas Optimizations Found:\n\n' + issues.map(i => '- ' + i.type + ': ' + i.recommendation + ' (' + i.savings + ')').join('\n'));
+      } else {
+        setStreamOutput('No gas optimizations found. Code looks efficient!');
+      }
     } catch (e) {
-      alert('Detection failed: ' + e.message);
+      setStreamOutput('Error: ' + e.message);
     }
+    setLoading(false);
   };
 
   const handleDetectFrontrun = async () => {
-    if (!contract) return;
+    setLoading(true);
+    setStreamOutput('Scanning for front-run vulnerabilities...\n');
     try {
       const result = await detectFrontrun(contract);
-      alert('Front-run risks: ' + JSON.stringify(result, null, 2));
+      const issues = result.vulnerabilities || [];
+      if (issues.length > 0) {
+        setStreamOutput('Front-Run Risks Found:\n\n' + issues.map(i => '- [' + i.severity + '] ' + i.type + '\n  ' + i.recommendation).join('\n'));
+      } else {
+        setStreamOutput('No front-run vulnerabilities detected.');
+      }
     } catch (e) {
-      alert('Detection failed: ' + e.message);
+      setStreamOutput('Error: ' + e.message);
     }
+    setLoading(false);
   };
 
   const handleDetectOracle = async () => {
-    if (!contract) return;
+    setLoading(true);
+    setStreamOutput('Scanning for oracle manipulation risks...\n');
     try {
       const result = await detectOracle(contract);
-      alert('Oracle risks: ' + JSON.stringify(result, null, 2));
+      const issues = result.vulnerabilities || [];
+      if (issues.length > 0) {
+        setStreamOutput('Oracle Risks Found:\n\n' + issues.map(i => '- [' + i.severity + '] ' + i.type + '\n  ' + i.recommendation).join('\n'));
+      } else {
+        setStreamOutput('No oracle manipulation risks detected.');
+      }
     } catch (e) {
-      alert('Detection failed: ' + e.message);
+      setStreamOutput('Error: ' + e.message);
     }
+    setLoading(false);
   };
 
   return (
@@ -342,6 +373,15 @@ export default function App() {
         )}
 
         {loading && status && <ProgressBar status={status.status} />}
+        
+        {(streamOutput || streamProgress) && (
+          <div className="stream-panel">
+            <div className="stream-header">
+              <span className="stream-status">{streamProgress || 'Processing...'}</span>
+            </div>
+            <pre className="stream-content">{streamOutput}</pre>
+          </div>
+        )}
 
         {report && <AuditReport report={report} />}
       </main>
