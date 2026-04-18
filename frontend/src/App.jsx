@@ -3,6 +3,7 @@ import ChainInput from './components/ChainInput';
 import CodeEditor from './components/CodeEditor';
 import FileUpload from './components/FileUpload';
 import AuditReport from './components/AuditReport';
+import ChatPanel from './components/ChatPanel';
 import { startAudit, getAuditStatus, getAuditReport } from './api';
 
 const SAMPLE_CONTRACT = `// SPDX-License-Identifier: MIT
@@ -66,6 +67,27 @@ export default function App() {
   const [showAskModal, setShowAskModal] = useState(false);
   const [askQuestion, setAskQuestion] = useState('');
   const [askAnswer, setAskAnswer] = useState('');
+  const [showChat, setShowChat] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [version] = useState('1.0.0');
+  const [provider, setProvider] = useState('nvidia');
+  const [sessionId, setSessionId] = useState(() => 'sess-' + Date.now().toString(36));
+  const [providersList] = useState([
+    { id: 'nvidia', name: 'NVIDIA (Minimax)', status: 'active' },
+    { id: 'openai', name: 'OpenAI (GPT)', status: 'available' },
+    { id: 'anthropic', name: 'Anthropic (Claude)', status: 'available' },
+    { id: 'qwen', name: 'Qwen', status: 'available' },
+    { id: 'ollama', name: 'Ollama (Local)', status: 'available' },
+  ]);
+  const [sessions, setSessions] = useState([
+    { id: sessionId, name: 'Current', created: new Date().toLocaleDateString() },
+  ]);
+
+  const handleNewSession = () => {
+    const newId = 'sess-' + Date.now().toString(36);
+    setSessions([{ id: newId, name: 'Session ' + (sessions.length + 1), created: new Date().toLocaleDateString() }, ...sessions]);
+    setSessionId(newId);
+  };
 
   const handleCommand = async (cmd) => {
     setLoading(true);
@@ -149,6 +171,13 @@ export default function App() {
           <span className="badge">SECURE</span>
         </div>
         <p>Web3 Smart Contract Security Auditor</p>
+        <div className="top-bar">
+          <span className="version">v{version}</span>
+          <span className="provider">AI: {provider}</span>
+          <span className="session">Session: {sessionId.slice(0,8)}</span>
+          <button className="settings-btn" onClick={() => setShowSettings(true)}>Settings</button>
+          <button className="chat-toggle" onClick={() => setShowChat(true)}>Chat with AI</button>
+        </div>
       </header>
       
       <nav className="mode-tabs">
@@ -231,6 +260,57 @@ export default function App() {
 
         {report && <AuditReport report={report} />}
       </main>
+      
+      <ChatPanel isOpen={showChat} onClose={() => setShowChat(false)} />
+      
+      {showSettings && (
+        <div className="modal-overlay">
+          <div className="modal settings-modal">
+            <div className="modal-header">
+              <h3>Settings</h3>
+              <button onClick={() => setShowSettings(false)}>X</button>
+            </div>
+            
+            <div className="settings-section">
+              <h4>Solidify v{version}</h4>
+              <p className="tagline">Web3 Smart Contract Security Auditor</p>
+            </div>
+            
+            <div className="settings-section">
+              <h4>AI Provider</h4>
+              <select value={provider} onChange={(e) => setProvider(e.target.value)}>
+                {providersList.map(p => (
+                  <option key={p.id} value={p.id}>{p.name} ({p.status})</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="settings-section">
+              <h4>Sessions</h4>
+              <div className="sessions-list">
+                {sessions.map(s => (
+                  <div key={s.id} className={'session-item ' + (s.id === sessionId ? 'active' : '')}>
+                    <span>{s.name}</span>
+                    <span className="session-date">{s.created}</span>
+                  </div>
+                ))}
+              </div>
+              <button className="secondary-btn" onClick={handleNewSession}>New Session</button>
+            </div>
+            
+            <div className="settings-section">
+              <h4>Available Commands</h4>
+              <div className="commands-list">
+                <code>audit</code> - Full contract audit<br/>
+                <code>hunt</code> - Hunt vulnerabilities<br/>
+                <code>scan</code> - Quick scan<br/>
+                <code>ask</code> - Ask security question<br/>
+                <code>chat</code> - AI chat
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

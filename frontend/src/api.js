@@ -88,4 +88,13 @@ export async function getChains() {
   }
 }
 
-export default { startAudit, streamAudit, getAuditStatus, getAuditReport, getChains };
+export async function chat(message, history = []) {
+  const res = await fetch(`${API_BASE}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, history }),
+  });
+  return res.json();
+}
+
+export default { startAudit, streamAudit, getAuditStatus, getAuditReport, getChains, chat };

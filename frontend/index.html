@@ -128,6 +128,45 @@
     .modal-actions button{padding:10px 20px;border-radius:6px;background:var(--bg3);color:var(--text);border:1px solid var(--border);cursor:pointer}
     .modal-actions button.primary{background:var(--primary);color:#fff;border:none}
     .ask-answer{background:var(--bg);padding:12px;border-radius:8px;margin-top:16px;white-space:pre-wrap}
+    
+    .chat-toggle{position:fixed;bottom:20px;right:20px;padding:14px 24px;background:linear-gradient(90deg,var(--primary),var(--accent));color:#fff;border:none;border-radius:30px;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 4px 20px rgba(88,166,255,0.4);z-index:100}
+    .chat-toggle:hover{transform:scale(1.05)}
+    
+    .chat-panel{position:fixed;top:0;right:0;width:400px;height:100vh;background:var(--bg2);border-left:1px solid var(--border);z-index:200;display:flex;flex-direction:column}
+    .chat-header{display:flex;justify-content:space-between;align-items:center;padding:16px;background:var(--bg);border-bottom:1px solid var(--border)}
+    .chat-header button{background:none;border:none;color:var(--text);font-size:18px;cursor:pointer}
+    .chat-messages{flex:1;overflow:auto;padding:16px}
+    .chat-welcome{color:var(--text2);line-height:1.6}
+    .chat-welcome ul{margin:12px 0;padding-left:20px}
+    .chat-message{margin-bottom:16px}
+    .chat-message .role{font-size:12px;color:var(--text2);margin-bottom:4px;display:block}
+    .chat-message.user .content{background:var(--primary);color:#fff;padding:12px;border-radius:12px 12px 0 12px}
+    .chat-message.assistant .content{background:var(--bg);padding:12px;border-radius:12px 12px 12px 0}
+    .chat-loading{color:var(--primary);font-style:italic}
+    .chat-input{display:flex;gap:8px;padding:16px;background:var(--bg);border-top:1px solid var(--border)}
+    .chat-input input{flex:1;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text)}
+    .chat-input button{padding:12px 20px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer}
+    .chat-input button:disabled{opacity:0.5}
+    
+    .top-bar{display:flex;gap:16px;justify-content:center;align-items:center;margin-top:8px}
+    .version,.provider,.session{font-size:13px;padding:4px 12px;background:var(--bg2);border-radius:20px}
+    .provider{color:var(--primary)}
+    .session{color:var(--text2)}
+    .settings-btn{background:none;border:none;color:var(--text2);cursor:pointer;font-size:13px}
+    
+    .settings-modal{width:500px;max-height:80vh;overflow:auto}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    .modal-header button{background:none;border:none;color:var(--text);font-size:20px;cursor:pointer}
+    .settings-section{margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+    .settings-section:last-child{border:none}
+    .settings-section h4{color:var(--primary);margin-bottom:12px}
+    .settings-section select{width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text)}
+    .sessions-list{margin-bottom:12px}
+    .session-item{display:flex;justify-content:space-between;padding:12px;background:var(--bg);border-radius:8px;margin-bottom:8px}
+    .session-item.active{border-left:3px solid var(--primary)}
+    .session-date{color:var(--text2);font-size:12px}
+    .commands-list{background:var(--bg);padding:16px;border-radius:8px;font-size:13px;line-height:1.8}
+    .commands-list code{background:var(--primary);padding:2px 8px;border-radius:4px;color:#fff}
   </style>
 </head>
 <body>
