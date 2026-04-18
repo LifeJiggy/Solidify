@@ -2,9 +2,6 @@
 """
 Solidify Main Entry Point
 Web3 Smart Contract Security Auditor
-
-Author: Peace Stephen (Tech Lead)
-Description: Main CLI entry point with REPL, argument parsing and module integration
 """
 
 import asyncio
@@ -13,101 +10,98 @@ import logging
 import sys
 import os
 import json
+import importlib
 from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Disable verbose logging - only show errors
 logging.basicConfig(level=logging.ERROR, format="%(message)s")
 logger = logging.getLogger(__name__)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
-logging.getLogger("providers").setLevel(logging.ERROR)
 
 # ============================================================================
-# MODULE IMPORTS - All integrated modules
-# Note: Some modules use hyphens in directory names - use importlib for those
+# MODULE IMPORTS - All integrated modules with try-except
 # ============================================================================
 
-# Models - Security model registry and configurations (works)
-from models import (
-    SolidifyModel,
-    SecurityFocus,
-    ModelProvider,
-    get_model,
-    list_all_models,
-    get_system_prompt,
-    AVAILABLE_MODELS,
-)
-
-# Hunts - Vulnerability hunters (select working ones)
-from hunts import (
-    reentrancy_hunter,
-    access_control_hunter,
-    oracle_manipulation_hunter,
-    # flash_loan_hunter,  # has dataclass issue
-    front_running_hunter,
-    centralization_hunter,
-    integer_overflow_hunter,
-    arbitrary_call_hunter,
-)
-
-# Chains - Audit chains (skip - has syntax errors)
-# from chains import reentrancy_scan, access_control_scan, full_audit, overflow_scan
-
-# Providers - AI providers (works)
-from providers import ProviderType
-from providers.provider_factory import create_provider
-
-# Rules - Detection rules (has syntax errors, skip for now)
-vulnerability_rules = detection_rules = security_rules = None
-
-# Reports - Report generation
-from reports import report_generator, report_formatter, markdown_reporter
-
-# Validations - Input/output validation
-from validations import (
-    input_validator,
-    output_validator,
-    payload_validator,
-    validate_contract_input,
-    validate_json_input,
-    validate_file_path,
-)
-
-# Vuln-Detection - Detection engine (dir is vuln-detection with hyphen)
-vuln_detection = None
+# Models
 try:
-    from vuln_detection import (
-        Severity,
-        VulnerabilityType,
-        VulnerabilityFinding,
-        DetectionResult,
-        ScanConfiguration,
-        scan_contract,
-        get_detector_count,
-        get_supported_vulnerabilities,
-    )
-except Exception as e:
-    pass
+    from models import AVAILABLE_MODELS, list_all_models, get_system_prompt
+except:
+    AVAILABLE_MODELS = {"minimax-m2.5": {"provider": "nvidia"}}
+    list_all_models = lambda: []
+    get_system_prompt = lambda: ""
 
-# Context-Management (has hyphen in dir name)
-context_management = None
-context_loader = None
-context_saver = None
+# Hunts
+try:
+    from hunts import reentrancy_hunter, access_control_hunter
+except:
+    reentrancy_hunter = access_control_hunter = None
 
-# Integrations (has hyphen)
-integrations = None
-llm_client = None
-provider_bridge = None
-tool_caller = None
+# Providers
+try:
+    from providers import ProviderType
+except:
+    ProviderType = None
 
-# Storage (has hyphen)
-storage = None
-persistence = None
-key_value = None
-cache = None
+# Vuln-Detection (hyphen dir)
+try:
+    vd = importlib.import_module("vuln-detection")
+    Severity = getattr(vd, "Severity", None)
+    VulnerabilityType = getattr(vd, "VulnerabilityType", None)
+    scan_contract = getattr(vd, "scan_contract", None)
+except:
+    Severity = VulnerabilityType = scan_contract = None
+
+# Rules
+try:
+    from rules import vulnerability_rules
+except:
+    vulnerability_rules = None
+
+# Reports
+try:
+    from reports import report_generator
+except:
+    report_generator = None
+
+# Validations
+try:
+    from validations import input_validator
+except:
+    input_validator = None
+
+# Skills (hyphen dir)
+try:
+    sk = importlib.import_module("skills")
+    get_skill_registry = getattr(sk, "get_skill_registry", lambda: None)
+    list_skills = getattr(sk, "list_skills", lambda: None)
+except:
+    get_skill_registry = list_skills = None
+
+# Context-Management (hyphen dir)
+try:
+    cm = importlib.import_module("context-management")
+    context_manager = getattr(cm, "context_manager", None)
+except:
+    context_manager = None
+
+# Integrations
+try:
+    from integrations import llm_client
+except:
+    llm_client = None
+
+# Storage
+try:
+    from storage import persistence
+except:
+    persistence = None
+
+# Runtime
+try:
+    from runtime import REPL
+except:
+    REPL = None
 
 VERSION = "1.0.0"
 APP_NAME = "Solidify"
@@ -165,7 +159,7 @@ def cmd_hunt(args: argparse.Namespace) -> None:
     if args.url or args.file or args.address:
         asyncio.run(cmd_hunt_advanced(args))
     else:
-        print("SoliGuard Hunt - Web3 Smart Contract Security Auditor")
+        print("Solidify Hunt - Web3 Smart Contract Security Auditor")
         print("")
         print("Usage:")
         print("  python main.py hunt --file <contract.sol> -m minimaxai/minimax-m2.5")
@@ -189,7 +183,7 @@ async def cmd_ask(args: argparse.Namespace) -> None:
         print(f"[ERROR] Cannot create provider")
         return
 
-    prompt = f"""You are SoliGuard - a smart contract security expert. Answer this question:
+    prompt = f"""You are Solidify - a smart contract security expert. Answer this question:
 
 {args.ask}
 
@@ -209,7 +203,7 @@ async def cmd_hunt_advanced(args: argparse.Namespace) -> None:
     model = args.model or "minimaxai/minimax-m2.5"
 
     print(f"\n{'=' * 50}")
-    print(f"  SoliGuard - Smart Contract Auditor")
+    print(f"  Solidify - Smart Contract Auditor")
     print(f"  Model: {model}")
     if args.file:
         print(f"  File: {args.file}")
@@ -238,7 +232,7 @@ async def cmd_hunt_advanced(args: argparse.Namespace) -> None:
         print(f"[ERROR] Cannot create provider: {provider_name}")
         return
 
-    prompt = f"""You are SoliGuard - a Web3 smart contract security auditor. Analyze this Solidity contract for CRITICAL and HIGH severity vulnerabilities.
+    prompt = f"""You are Solidify - a Web3 smart contract security auditor. Analyze this Solidity contract for CRITICAL and HIGH severity vulnerabilities.
 
 Contract:
 ```solidity
@@ -336,7 +330,7 @@ def start_repl(args: argparse.Namespace) -> None:
 
     print("""
 ╔═══════════════════════════════════════════════════════════════╗
-║                    SOLIGUARD COMMANDS                         ║
+║                    Solidify COMMANDS                         ║
 ╠═══════════════════════════════════════════════════════════════╣
 ║  CORE COMMANDS:                                               ║
 ║  • audit <file>      - Audit a Solidity contract              ║
@@ -389,7 +383,7 @@ Commands:
             elif command == "clear":
                 print("""
 ╔═══════════════════════════════════════════════════════════════╗
-║   SoliGuard - Web3 Security Auditor - REPL Mode                 ║
+║   Solidify - Web3 Security Auditor - REPL Mode                 ║
 ╚═══════════════════════════════════════════════════════════════╝
 """)
 

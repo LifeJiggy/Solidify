@@ -68,7 +68,7 @@ MODELS = {
 
 
 class MiniMaxProvider:
-    """MiniMax AI provider for SoliGuard security analysis"""
+    """MiniMax AI provider for Solidify security analysis"""
 
     def __init__(self, config: Optional[MiniMaxConfig] = None):
         self.config = config or MiniMaxConfig(
