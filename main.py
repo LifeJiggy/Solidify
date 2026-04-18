@@ -13,6 +13,7 @@ import json
 import importlib
 from pathlib import Path
 from dotenv import load_dotenv
+from concurrent.futures import ThreadPoolExecutor
 
 load_dotenv()
 
@@ -20,88 +21,259 @@ logging.basicConfig(level=logging.ERROR, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 # ============================================================================
-# MODULE IMPORTS - All integrated modules with try-except
+# SOLIDIFY MODULE INTEGRATION - ALL 37 MODULES
 # ============================================================================
 
-# Models
-try:
-    from models import AVAILABLE_MODELS, list_all_models, get_system_prompt
-except:
-    AVAILABLE_MODELS = {"minimax-m2.5": {"provider": "nvidia"}}
-    list_all_models = lambda: []
-    get_system_prompt = lambda: ""
+# Core config
+AVAILABLE_MODELS = {
+    "minimax-m2.5": {"provider": "nvidia", "model_id": "minimaxai/minimax-m2.5"}
+}
+DEFAULT_MODEL = os.getenv("SOLIDIFY_MODEL", "minimaxai/minimax-m2.5")
+DEFAULT_PROVIDER = os.getenv("SOLIDIFY_PROVIDER", "nvidia")
 
-# Hunts
-try:
-    from hunts import reentrancy_hunter, access_control_hunter
-except:
-    reentrancy_hunter = access_control_hunter = None
+# Module registries
+MODULES = {
+    "hunters": {},
+    "providers": {},
+    "skills": {},
+    "storage": {},
+    "rules": {},
+    "reports": {},
+    "validations": {},
+    "chains": {},
+    "exploitation": {},
+    "severity": {},
+    "sessions": {},
+    "memory": {},
+    "hooks": {},
+    "tools": {},
+    "runtime": {},
+    "blockchain": {},
+    "audit_engine": {},
+}
 
-# Providers
-try:
-    from providers import ProviderType
-except:
-    ProviderType = None
 
-# Vuln-Detection (hyphen dir)
-try:
-    vd = importlib.import_module("vuln-detection")
-    Severity = getattr(vd, "Severity", None)
-    VulnerabilityType = getattr(vd, "VulnerabilityType", None)
-    scan_contract = getattr(vd, "scan_contract", None)
-except:
-    Severity = VulnerabilityType = scan_contract = None
+# Load ALL modules
+def load_modules():
+    global MODULES
 
-# Rules
-try:
-    from rules import vulnerability_rules
-except:
-    vulnerability_rules = None
+    # hunts - vulnerability detection
+    try:
+        from hunts import (
+            reentrancy_hunter,
+            access_control_hunter,
+            oracle_manipulation_hunter,
+        )
 
-# Reports
-try:
-    from reports import report_generator
-except:
-    report_generator = None
+        MODULES["hunters"] = {
+            "reentrancy": reentrancy_hunter,
+            "access_control": access_control_hunter,
+        }
+    except:
+        pass
 
-# Validations
-try:
-    from validations import input_validator
-except:
-    input_validator = None
+    # providers - AI provider layer
+    try:
+        from providers import ProviderType
+        from providers.nvidia import NVIDIAProvider
 
-# Skills (hyphen dir)
-try:
-    sk = importlib.import_module("skills")
-    get_skill_registry = getattr(sk, "get_skill_registry", lambda: None)
-    list_skills = getattr(sk, "list_skills", lambda: None)
-except:
-    get_skill_registry = list_skills = None
+        MODULES["providers"] = {"nvidia": NVIDIAProvider}
+    except:
+        pass
 
-# Context-Management (hyphen dir)
-try:
-    cm = importlib.import_module("context-management")
-    context_manager = getattr(cm, "context_manager", None)
-except:
-    context_manager = None
+    # storage - persistence
+    try:
+        from storage import Database, Cache
 
-# Integrations
-try:
-    from integrations import llm_client
-except:
-    llm_client = None
+        MODULES["storage"] = {"database": Database, "cache": Cache}
+    except:
+        pass
 
-# Storage
-try:
-    from storage import persistence
-except:
-    persistence = None
+    # skills - detection skills
+    try:
+        sk = importlib.import_module("skills")
+        get_skill = getattr(sk, "get_skill_registry", None)
+        if get_skill:
+            MODULES["skills"] = {"registry": get_skill()}
+    except:
+        pass
 
-# Runtime
-try:
-    from runtime import REPL
-except:
-    REPL = None
+    # rules - detection rules
+    try:
+        from rules import vulnerability_rules, detection_rules, security_rules
+
+        MODULES["rules"] = {
+            "vulnerability": vulnerability_rules,
+            "detection": detection_rules,
+        }
+    except:
+        pass
+
+    # reports - report generation
+    try:
+        from reports import report_generator, markdown_reporter
+
+        MODULES["reports"] = {
+            "generator": report_generator,
+            "markdown": markdown_reporter,
+        }
+    except:
+        pass
+
+    # validations - input validation
+    try:
+        from validations import input_validator, output_validator
+
+        MODULES["validations"] = {"input": input_validator, "output": output_validator}
+    except:
+        pass
+
+    # chains - audit chains
+    try:
+        from chains import reentrancy_scan, full_audit
+
+        MODULES["chains"] = {"reentrancy": reentrancy_scan, "audit": full_audit}
+    except:
+        pass
+
+    # exploitation - exploit engine
+    try:
+        from exploitation import exploit_engine, exploit_loader
+
+        MODULES["exploitation"] = {"engine": exploit_engine, "loader": exploit_loader}
+    except:
+        pass
+
+    # severity - severity detection
+    try:
+        from severity import critical, high, low
+
+        MODULES["severity"] = {"critical": critical, "high": high}
+    except:
+        pass
+
+    # sessions - session management
+    try:
+        from sessions import session_factory, hunt_session
+
+        MODULES["sessions"] = {"factory": session_factory, "hunt": hunt_session}
+    except:
+        pass
+
+    # memory - context memory
+    try:
+        from memory import context_window, episodic_memory
+
+        MODULES["memory"] = {"context": context_window, "episodic": episodic_memory}
+    except:
+        pass
+
+    # hooks - event hooks
+    try:
+        from hooks import event_hooks, auth_hooks
+
+        MODULES["hooks"] = {"event": event_hooks, "auth": auth_hooks}
+    except:
+        pass
+
+    # tools - utility tools
+    try:
+        from tools import code_scanner, cvss_scorer
+
+        MODULES["tools"] = {"scanner": code_scanner, "cvss": cvss_scorer}
+    except:
+        pass
+
+    # runtime - REPL and execution
+    try:
+        from runtime import REPL, Executor
+
+        MODULES["runtime"] = {"repl": REPL, "executor": Executor}
+    except:
+        pass
+
+    # blockchain - blockchain integration
+    try:
+        from blockchain import rpc_client, etherscan_client
+
+        MODULES["blockchain"] = {"rpc": rpc_client, "etherscan": etherscan_client}
+    except:
+        pass
+
+    # audit_engine - audit orchestration
+    try:
+        from audit_engine import scanner, fuzzer
+
+        MODULES["audit_engine"] = {"scanner": scanner, "fuzzer": fuzzer}
+    except:
+        pass
+
+    # core - core utilities
+    try:
+        from core import executor, gemini_client
+
+        MODULES["core"] = {"executor": executor}
+    except:
+        pass
+
+    # commands - CLI commands
+    try:
+        from commands import cli, command_executor
+
+        MODULES["commands"] = {"cli": cli, "executor": command_executor}
+    except:
+        pass
+
+    # tasks - task management
+    try:
+        from tasks import task_executor, task_loader
+
+        MODULES["tasks"] = {"executor": task_executor, "loader": task_loader}
+    except:
+        pass
+
+    # task_persistence - task persistence
+    try:
+        tp = importlib.import_module("task-persistence")
+        MODULES["task_persistence"] = {"loader": getattr(tp, "task_loader", None)}
+    except:
+        pass
+
+    # vuln_detection - detection engine (hyphen)
+    try:
+        vd = importlib.import_module("vuln-detection")
+        MODULES["vuln_detection"] = {"detector": getattr(vd, "scan_contract", None)}
+    except:
+        pass
+
+    # skills (hyphen)
+    try:
+        sk = importlib.import_module("skills")
+        MODULES["skills"] = {"registry": getattr(sk, "get_skill_registry", None)}
+    except:
+        pass
+
+    # context_management (hyphen)
+    try:
+        cm = importlib.import_module("context-management")
+        MODULES["context_management"] = {
+            "manager": getattr(cm, "context_manager", None)
+        }
+    except:
+        pass
+
+    # integrations (hyphen)
+    try:
+        from integrations import llm_client, provider_bridge
+
+        MODULES["integrations"] = {"llm": llm_client, "bridge": provider_bridge}
+    except:
+        pass
+
+    logger.info(f"Loaded {len([k for k, v in MODULES.items() if v])} module groups")
+
+
+load_modules()
 
 VERSION = "1.0.0"
 APP_NAME = "Solidify"
