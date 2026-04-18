@@ -62,6 +62,47 @@ export default function App() {
   const [status, setStatus] = useState(null);
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [streamOutput, setStreamOutput] = useState('');
+  const [showAskModal, setShowAskModal] = useState(false);
+  const [askQuestion, setAskQuestion] = useState('');
+  const [askAnswer, setAskAnswer] = useState('');
+
+  const handleCommand = async (cmd) => {
+    setLoading(true);
+    setStreamOutput('');
+    try {
+      const result = await startAudit(contract, chain, { command: cmd });
+      setTaskId(result.task_id);
+      // Poll for streaming results
+      const interval = setInterval(async () => {
+        const s = await getAuditStatus(result.task_id);
+        setStatus(s);
+        if (s.status === 'completed') {
+          clearInterval(interval);
+          const r = await getAuditReport(result.task_id);
+          setReport(r);
+          setStreamOutput(r.summary || 'Done');
+        }
+      }, 2000);
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+    setLoading(false);
+  };
+
+  const handleAsk = () => setShowAskModal(true);
+
+  const handleAskSubmit = async () => {
+    setLoading(true);
+    try {
+      const result = await startAudit(askQuestion, chain, { command: 'ask' });
+      const r = await getAuditReport(result.task_id);
+      setAskAnswer(r.summary || r.vulnerabilities?.[0]?.description || 'No answer');
+    } catch (e) {
+      setAskAnswer('Error: ' + e.message);
+    }
+    setLoading(false);
+  };
 
   const handleAudit = async () => {
     setLoading(true);
@@ -154,16 +195,37 @@ export default function App() {
         )}
 
         <div className="actions">
-          <button className="audit-btn" onClick={handleAudit} disabled={loading}>
-            {loading ? 'Running Audit...' : 'Start Audit'}
+          <button className="audit-btn" onClick={() => handleCommand('audit')} disabled={loading}>
+            {loading ? 'Running...' : 'Audit'}
           </button>
+          <button className="cmd-btn" onClick={() => handleCommand('hunt')} disabled={loading}>Hunt</button>
+          <button className="cmd-btn" onClick={() => handleCommand('scan')} disabled={loading}>Scan</button>
+          <button className="cmd-btn" onClick={handleAsk}>Ask</button>
           {report && (
             <>
               <button className="secondary-btn" onClick={exportJSON}>Export JSON</button>
-              <button className="secondary-btn" onClick={() => alert('PDF export coming soon!')}>Export PDF</button>
+              <button className="secondary-btn" onClick={() => alert('PDF coming soon!')}>Export PDF</button>
             </>
           )}
         </div>
+
+        {showAskModal && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <h3>Ask Security Question</h3>
+              <textarea
+                value={askQuestion}
+                onChange={(e) => setAskQuestion(e.target.value)}
+                placeholder="How do I prevent reentrancy..."
+              />
+              <div className="modal-actions">
+                <button onClick={() => setShowAskModal(false)}>Cancel</button>
+                <button className="primary" onClick={handleAskSubmit}>Ask AI</button>
+              </div>
+              {askAnswer && <div className="ask-answer">{askAnswer}</div>}
+            </div>
+          </div>
+        )}
 
         {loading && status && <ProgressBar status={status.status} />}
 

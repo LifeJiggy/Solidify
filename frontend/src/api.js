@@ -1,13 +1,17 @@
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = 'http://localhost:8001/api';
 
 export async function startAudit(codeOrAddress, chain, options = {}) {
   const body = {
     chain,
     ...options,
-    code: codeOrAddress && codeOrAddress.startsWith('0x') ? undefined : codeOrAddress,
-    address: codeOrAddress?.startsWith('0x') ? codeOrAddress : undefined,
   };
-  if (!body.code && !body.address) body.code = codeOrAddress;
+  
+  // Detect if it's an address (starts with 0x and is 42 chars)
+  if (codeOrAddress && codeOrAddress.startsWith('0x') && codeOrAddress.length === 42) {
+    body.address = codeOrAddress;
+  } else {
+    body.code = codeOrAddress;
+  }
   
   const res = await fetch(`${API_BASE}/audit/start`, {
     method: 'POST',
@@ -15,6 +19,48 @@ export async function startAudit(codeOrAddress, chain, options = {}) {
     body: JSON.stringify(body),
   });
   return res.json();
+}
+
+export async function streamAudit(taskId, onChunk, onComplete, onError) {
+  try {
+    const response = await fetch(`${API_BASE}/audit/stream/${taskId}`);
+    if (!response.ok) {
+      throw new Error('Stream failed');
+    }
+    
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      const text = decoder.decode(value);
+      const lines = text.split('\n');
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            
+            if (data.status === 'streaming' && data.chunk) {
+              onChunk(data.chunk);
+            } else if (data.status === 'completed' && data.result) {
+              onComplete(data.result);
+            } else if (data.status === 'failed') {
+              onError(data.error || 'Audit failed');
+            } else if (data.status === 'connecting' || data.status === 'analyzing') {
+              onChunk(data.status + '...\n');
+            }
+          } catch (e) {
+            // Skip parse errors
+          }
+        }
+      }
+    }
+  } catch (e) {
+    onError(e.message);
+  }
 }
 
 export async function getAuditStatus(taskId) {
@@ -33,13 +79,13 @@ export async function getChains() {
     return res.json();
   } catch {
     return [
-      { id: 'ethereum', name: 'Ethereum', rpc: 'https://eth.llamarpc.com' },
-      { id: 'bsc', name: 'BNB Chain', rpc: 'https://bsc-dataseed.binance.org' },
-      { id: 'polygon', name: 'Polygon', rpc: 'https://polygon-rpc.com' },
-      { id: 'arbitrum', name: 'Arbitrum', rpc: 'https://arb1.arbitrum.io/rpc' },
-      { id: 'optimism', name: 'Optimism', rpc: 'https://mainnet.optimism.io' },
+      { id: 'ethereum', name: 'Ethereum', chain_id: 1 },
+      { id: 'bsc', name: 'BNB Chain', chain_id: 56 },
+      { id: 'polygon', name: 'Polygon', chain_id: 137 },
+      { id: 'arbitrum', name: 'Arbitrum', chain_id: 42161 },
+      { id: 'optimism', name: 'Optimism', chain_id: 10 },
     ];
   }
 }
 
-export default { startAudit, getAuditStatus, getAuditReport, getChains };
+export default { startAudit, streamAudit, getAuditStatus, getAuditReport, getChains };
