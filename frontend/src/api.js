@@ -97,4 +97,46 @@ export async function chat(message, history = []) {
   return res.json();
 }
 
-export default { startAudit, streamAudit, getAuditStatus, getAuditReport, getChains, chat };
+export async function exportMarkdown(taskId) {
+  const res = await fetch(`${API_BASE}/export/markdown/${taskId}`);
+  return res.text();
+}
+
+export async function exportPdf(taskId) {
+  const res = await fetch(`${API_BASE}/export/pdf/${taskId}`);
+  return res.text();
+}
+
+export async function getPoc(taskId) {
+  const res = await fetch(`${API_BASE}/poc/${taskId}`);
+  return res.json();
+}
+
+export async function detectGas(code) {
+  const res = await fetch(`${API_BASE}/detect/gas`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+  return res.json();
+}
+
+export async function detectFrontrun(code) {
+  const res = await fetch(`${API_BASE}/detect/frontrun`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+  return res.json();
+}
+
+export async function detectOracle(code) {
+  const res = await fetch(`${API_BASE}/detect/oracle`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+  return res.json();
+}
+
+export default { startAudit, streamAudit, getAuditStatus, getAuditReport, getChains, chat, exportMarkdown, exportPdf, getPoc, detectGas, detectFrontrun, detectOracle };

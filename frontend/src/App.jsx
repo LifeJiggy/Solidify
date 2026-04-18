@@ -4,7 +4,7 @@ import CodeEditor from './components/CodeEditor';
 import FileUpload from './components/FileUpload';
 import AuditReport from './components/AuditReport';
 import ChatPanel from './components/ChatPanel';
-import { startAudit, getAuditStatus, getAuditReport } from './api';
+import { startAudit, getAuditStatus, getAuditReport, exportMarkdown, exportPdf, getPoc, detectGas, detectFrontrun, detectOracle } from './api';
 
 const SAMPLE_CONTRACT = `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
@@ -163,6 +163,86 @@ export default function App() {
     a.click();
   };
 
+  const handleExportMarkdown = async () => {
+    if (!taskId) return;
+    try {
+      const md = await exportMarkdown(taskId);
+      const blob = new Blob([md], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'audit-' + Date.now() + '.md';
+      a.click();
+    } catch (e) {
+      alert('Export failed: ' + e.message);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!taskId) return;
+    try {
+      const pdf = await exportPdf(taskId);
+      const blob = new Blob([pdf], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'audit-' + Date.now() + '.pdf';
+      a.click();
+    } catch (e) {
+      alert('Export failed: ' + e.message);
+    }
+  };
+
+  const handleGetPoc = async () => {
+    if (!taskId) return;
+    try {
+      const pocs = await getPoc(taskId);
+      if (pocs.pocs?.length > 0) {
+        const pocContent = pocs.pocs.map(p => p.exploit_code).join('\n\n');
+        const blob = new Blob([pocContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'exploits-' + Date.now() + '.sol';
+        a.click();
+      } else {
+        alert('No critical vulnerabilities for PoC generation');
+      }
+    } catch (e) {
+      alert('PoC generation failed: ' + e.message);
+    }
+  };
+
+  const handleDetectGas = async () => {
+    if (!contract) return;
+    try {
+      const result = await detectGas(contract);
+      alert('Gas optimizations: ' + JSON.stringify(result, null, 2));
+    } catch (e) {
+      alert('Detection failed: ' + e.message);
+    }
+  };
+
+  const handleDetectFrontrun = async () => {
+    if (!contract) return;
+    try {
+      const result = await detectFrontrun(contract);
+      alert('Front-run risks: ' + JSON.stringify(result, null, 2));
+    } catch (e) {
+      alert('Detection failed: ' + e.message);
+    }
+  };
+
+  const handleDetectOracle = async () => {
+    if (!contract) return;
+    try {
+      const result = await detectOracle(contract);
+      alert('Oracle risks: ' + JSON.stringify(result, null, 2));
+    } catch (e) {
+      alert('Detection failed: ' + e.message);
+    }
+  };
+
   return (
     <div className="app">
       <header>
@@ -230,10 +310,15 @@ export default function App() {
           <button className="cmd-btn" onClick={() => handleCommand('hunt')} disabled={loading}>Hunt</button>
           <button className="cmd-btn" onClick={() => handleCommand('scan')} disabled={loading}>Scan</button>
           <button className="cmd-btn" onClick={handleAsk}>Ask</button>
+          <button className="cmd-btn" onClick={handleDetectGas}>Gas</button>
+          <button className="cmd-btn" onClick={handleDetectFrontrun}>FrontRun</button>
+          <button className="cmd-btn" onClick={handleDetectOracle}>Oracle</button>
           {report && (
             <>
-              <button className="secondary-btn" onClick={exportJSON}>Export JSON</button>
-              <button className="secondary-btn" onClick={() => alert('PDF coming soon!')}>Export PDF</button>
+              <button className="secondary-btn" onClick={exportJSON}>JSON</button>
+              <button className="secondary-btn" onClick={handleExportMarkdown}>Markdown</button>
+              <button className="secondary-btn" onClick={handleExportPdf}>PDF</button>
+              <button className="secondary-btn" onClick={handleGetPoc}>PoC Exploits</button>
             </>
           )}
         </div>
