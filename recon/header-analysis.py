@@ -419,7 +419,7 @@ class EthJSONRPCHandler:
         self.timeout = timeout
 
     async def call_method(
-        self, method: str, params: List[Any] = None
+        self, method: str, params: Optional[List[Any]] = None
     ) -> Dict[str, Any]:
         result = {"method": method, "success": False, "result": None, "error": None}
         params = params or []
@@ -476,6 +476,300 @@ def analyze_headers(url: str) -> Dict[str, Any]:
     return asyncio.run(analyzer.analyze(url))
 
 
+class ContractVerificationChecker:
+    VERIFIED_STATUS = {
+        "yes": "verified",
+        "no": "not_verified",
+        "partial": "partially_verified",
+    }
+
+    def __init__(self, timeout: int = 30):
+        self.timeout = timeout
+
+    async def check_verification(
+        self, address: str, chain: str = "ethereum"
+    ) -> Dict[str, Any]:
+        result = {
+            "address": address,
+            "chain": chain,
+            "verified": False,
+            "status": "unknown",
+        }
+        explorer_api = {
+            "ethereum": "api.etherscan.io",
+            "bsc": "api.bscscan.com",
+            "polygon": "api.polygonscan.com",
+            "arbitrum": "api.arbiscan.io",
+            "optimism": "api-optimistic.etherscan.io",
+        }
+        try:
+            api_base = f"https://{explorer_api.get(chain, explorer_api['ethereum'])}"
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                url = f"{api_base}/api?module=contract&action=getsourcecode&address={address}"
+                response = await client.get(url)
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("status") == "1" and data.get("result"):
+                        source = data["result"][0].get("SourceCode", "")
+                        result["verified"] = bool(source)
+                        result["status"] = self.VERIFIED_STATUS.get(
+                            "yes" if source else "no", "unknown"
+                        )
+        except Exception as e:
+            logger.error(f"Verification check failed: {e}")
+        return result
+
+    async def get_compiler_version(
+        self, address: str, chain: str = "ethereum"
+    ) -> Optional[str]:
+        compiler = None
+        explorer_api = {
+            "ethereum": "api.etherscan.io",
+            "bsc": "api.bscscan.com",
+            "polygon": "api.polygonscan.com",
+        }
+        try:
+            api_base = f"https://{explorer_api.get(chain, explorer_api['ethereum'])}"
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                url = f"{api_base}/api?module=contract&action=getsourcecode&address={address}"
+                response = await client.get(url)
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("status") == "1" and data.get("result"):
+                        compiler = data["result"][0].get("CompilerVersion", "")
+        except Exception as e:
+            logger.error(f"Compiler version fetch failed: {e}")
+        return compiler
+
+
+class NFTMetadataVerifier:
+    METADATA_FIELDS = {
+        "name": str,
+        "description": str,
+        "image": str,
+        "external_url": str,
+        "attributes": list,
+    }
+
+    def __init__(self, timeout: int = 30):
+        self.timeout = timeout
+
+    async def verify_metadata(self, token_uri: str) -> Dict[str, Any]:
+        result = {"uri": token_uri, "valid": False, "fields": {}, "missing": []}
+        try:
+            async with httpx.AsyncClient(
+                timeout=self.timeout, follow_redirects=True
+            ) as client:
+                response = await client.get(token_uri)
+                if response.status_code == 200:
+                    try:
+                        metadata = response.json()
+                        result["fields"] = {
+                            k: metadata.get(k) for k in self.METADATA_FIELDS
+                        }
+                        result["missing"] = [
+                            k for k in self.METADATA_FIELDS if k not in metadata
+                        ]
+                        result["valid"] = len(result["missing"]) == 0
+                    except json.JSONDecodeError:
+                        result["error"] = "Invalid JSON"
+        except Exception as e:
+            result["error"] = str(e)
+        return result
+
+    def validate_image_url(self, url: str) -> bool:
+        valid_protocols = ["https://", "ipfs://", "ar://"]
+        return any(url.startswith(p) for p in valid_protocols)
+
+    def validate_attributes(self, attributes: List[Dict[str, Any]]) -> Dict[str, Any]:
+        result = {"valid": False, "trait_type_missing": []}
+        for attr in attributes:
+            if not isinstance(attr, dict):
+                result["errors"] = ["Invalid attribute structure"]
+                return result
+            if "trait_type" not in attr:
+                result["trait_type_missing"].append(attr)
+        result["valid"] = len(result["trait_type_missing"]) == 0
+        return result
+
+
+class TokenStandardsChecker:
+    ERC_STANDARDS = {
+        "ERC20": {
+            "interface_id": "0x36372b07",
+            "functions": ["balanceOf", "transfer", "approve"],
+        },
+        "ERC721": {
+            "interface_id": "0x80ac58cd",
+            "functions": ["ownerOf", "transferFrom", "approve"],
+        },
+        "ERC1155": {
+            "interface_id": "0xd9b67a26",
+            "functions": ["balanceOf", "safeTransferFrom"],
+        },
+        "ERC4626": {
+            "interface_id": "0x6bbd8783",
+            "functions": ["asset", "deposit", "mint"],
+        },
+    }
+
+    def __init__(self, timeout: int = 30):
+        self.timeout = timeout
+
+    async def detect_standard(self, address: str, rpc_url: str) -> Dict[str, Any]:
+        result = {"address": address, "detected_standards": [], "confidence": {}}
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                for standard, info in self.ERC_STANDARDS.items():
+                    methods_supported = 0
+                    for func in info["functions"]:
+                        response = await client.post(
+                            rpc_url,
+                            json={
+                                "jsonrpc": "2.0",
+                                "method": "eth_call",
+                                "params": [
+                                    {
+                                        "to": address,
+                                        "data": f"0x{hashlib.sha256(func.encode()).hexdigest()[:8].zfill(8)}",
+                                    },
+                                    "latest",
+                                ],
+                                "id": 1,
+                            },
+                        )
+                        if response.status_code == 200:
+                            data = response.json()
+                            if "error" not in data:
+                                methods_supported += 1
+                    if methods_supported > 0:
+                        result["detected_standards"].append(standard)
+                        result["confidence"][standard] = methods_supported / len(
+                            info["functions"]
+                        )
+        except Exception as e:
+            logger.error(f"Standard detection failed: {e}")
+        return result
+
+
+class GasEstimationAnalyzer:
+    def __init__(self, timeout: int = 30):
+        self.timeout = timeout
+
+    async def estimate_gas(
+        self, rpc_url: str, to: str, data: str = "0x"
+    ) -> Dict[str, Any]:
+        result = {"to": to, "data": data, "gas_estimate": None, "error": None}
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(
+                    rpc_url,
+                    json={
+                        "jsonrpc": "2.0",
+                        "method": "eth_estimateGas",
+                        "params": [{"to": to, "data": data}],
+                        "id": 1,
+                    },
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    result["gas_estimate"] = data.get("result")
+        except Exception as e:
+            result["error"] = str(e)
+        return result
+
+    async def compare_gas(
+        self, rpc_url: str, calls: List[Dict[str, str]]
+    ) -> Dict[str, Any]:
+        results = {"estimates": [], "lowest": None, "highest": None}
+        for call in calls:
+            estimate = await self.estimate_gas(
+                rpc_url, call.get("to", ""), call.get("data", "0x")
+            )
+            if estimate.get("gas_estimate"):
+                results["estimates"].append(estimate)
+        if results["estimates"]:
+            gas_values = [int(e["gas_estimate"], 16) for e in results["estimates"]]
+            results["lowest"] = min(gas_values)
+            results["highest"] = max(gas_values)
+        return results
+
+
+class BlockScanner:
+    RECENT_BLOCKS = 100
+
+    def __init__(self, timeout: int = 30):
+        self.timeout = timeout
+
+    async def get_latest_block(self, rpc_url: str) -> Dict[str, Any]:
+        result = {"block_number": None, "hash": "", "timestamp": None}
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(
+                    rpc_url,
+                    json={
+                        "jsonrpc": "2.0",
+                        "method": "eth_blockNumber",
+                        "params": [],
+                        "id": 1,
+                    },
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    result["block_number"] = int(data.get("result", "0x0"), 16)
+        except Exception as e:
+            logger.error(f"Latest block fetch failed: {e}")
+        return result
+
+    async def get_block_transactions(
+        self, rpc_url: str, block_number: int
+    ) -> List[Dict[str, Any]]:
+        transactions = []
+        try:
+            import hexbytes
+
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                block_hex = hex(block_number)
+                response = await client.post(
+                    rpc_url,
+                    json={
+                        "jsonrpc": "2.0",
+                        "method": "eth_getBlockByNumber",
+                        "params": [block_hex, True],
+                        "id": 1,
+                    },
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    block = data.get("result", {})
+                    transactions = block.get("transactions", [])
+        except Exception as e:
+            logger.error(f"Block transaction fetch failed: {e}")
+        return transactions
+
+    async def get_tx_receipt(self, rpc_url: str, tx_hash: str) -> Dict[str, Any]:
+        receipt = {"transaction_hash": tx_hash, "status": None, "gas_used": None}
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(
+                    rpc_url,
+                    json={
+                        "jsonrpc": "2.0",
+                        "method": "eth_getTransactionReceipt",
+                        "params": [tx_hash],
+                        "id": 1,
+                    },
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    result = data.get("result", {})
+                    receipt["status"] = result.get("status")
+                    receipt["gas_used"] = result.get("gasUsed")
+        except Exception as e:
+            logger.error(f"Transaction receipt fetch failed: {e}")
+        return receipt
+
+
 __all__ = [
     "HeaderAnalyzer",
     "HeaderAnalysis",
@@ -484,5 +778,10 @@ __all__ = [
     "RPCResponseAnalyzer",
     "Web3SecurityAuditor",
     "EthJSONRPCHandler",
+    "ContractVerificationChecker",
+    "NFTMetadataVerifier",
+    "TokenStandardsChecker",
+    "GasEstimationAnalyzer",
+    "BlockScanner",
     "analyze_headers",
 ]
