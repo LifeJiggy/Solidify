@@ -6,22 +6,21 @@ Supports GitHub Actions, GitLab CI, Jenkins, and custom pipeline configurations.
 
 Author: Peace Stephen
 Project: Solidify - Web3 Smart Contract Security Auditor
-Hackathon: GDG Abuja × Build with AI Sprint
+Hackathon: GDG Abuja x Build with AI Sprint
 """
 
-from .github_action import GitHubActionGenerator
+from .github_action import GitHubActionsGenerator
 from .gitlab_ci import GitLabCIGenerator
-from .jenkins import JenkinsPipelineGenerator
-from .pipeline_config import PipelineConfig, PipelineRunner
+from .jenkins import JenkinsGenerator
+from .pipeline_config import PipelineConfig
 from .action_yaml import ActionYAMLParser
 
 __version__ = "1.0.0"
 __all__ = [
-    "GitHubActionGenerator",
+    "GitHubActionsGenerator",
     "GitLabCIGenerator",
-    "JenkinsPipelineGenerator", 
+    "JenkinsGenerator",
     "PipelineConfig",
-    "PipelineRunner",
     "ActionYAMLParser",
 ]
 
@@ -45,9 +44,9 @@ DEFAULT_AUDIT_STEPS = [
 def get_platform_generator(platform):
     """Get the appropriate pipeline generator for the platform."""
     generators = {
-        "github": GitHubActionGenerator,
+        "github": GitHubActionsGenerator,
         "gitlab": GitLabCIGenerator,
-        "jenkins": JenkinsPipelineGenerator,
+        "jenkins": JenkinsGenerator,
     }
     return generators.get(platform.lower())
 

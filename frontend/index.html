@@ -23,8 +23,8 @@
     
     .input-section{margin-bottom:20px}
     .chain-input{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap}
-    .chain-input>*{flex:1;min-width:200px}
-    .chain-input label{display:block;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px}
+    .chain-input select,.chain-input input{flex:1;min-width:200px}
+    .chain-input label{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px}
     .chain-input select,.chain-input input{padding:12px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text);width:100%;font-size:14px}
     .chain-input select:focus,.chain-input input:focus{outline:none;border-color:var(--primary)}
     
@@ -51,6 +51,7 @@
     .hint{font-size:13px;color:var(--text2);margin-top:8px}
     
     .actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:24px 0}
+    .actions .secondary-btn,.actions .cmd-btn{margin:0}
     .audit-btn{padding:14px 32px;border:none;border-radius:8px;background:linear-gradient(90deg,var(--primary),var(--accent));color:#fff;font-size:16px;font-weight:600;cursor:pointer;transition:all 0.2s}
     .audit-btn:disabled{opacity:0.6;cursor:not-allowed}
     .audit-btn:hover:not(:disabled){transform:scale(1.02);box-shadow:0 4px 20px rgba(88,166,255,0.3)}
@@ -62,7 +63,6 @@
     .empty-icon{font-size:48px;margin-bottom:16px}
     .report-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
     .report-header h2{font-size:20px}
-    .actions{display:flex;gap:8px}
     .btn-small{padding:8px 16px;border-radius:6px;background:var(--bg3);color:var(--text);border:1px solid var(--border);cursor:pointer;font-size:13px}
     .btn-small.primary{background:var(--primary);color:#fff;border:none}
     
@@ -144,6 +144,7 @@
     .chat-header button{background:none;border:none;color:var(--text);font-size:18px;cursor:pointer}
     .chat-messages{flex:1;overflow:auto;padding:16px}
     .chat-welcome{color:var(--text2);line-height:1.6}
+    .current-model{font-size:11px;color:var(--primary);margin-top:12px;padding:6px 10px;background:var(--bg);border-radius:6px;display:inline-block}
     .chat-welcome ul{margin:12px 0;padding-left:20px}
     .chat-message{margin-bottom:16px}
     .chat-message .role{font-size:12px;color:var(--text2);margin-bottom:4px;display:block}
@@ -174,6 +175,11 @@
     .session-date{color:var(--text2);font-size:12px}
     .commands-list{background:var(--bg);padding:16px;border-radius:8px;font-size:13px;line-height:1.8}
     .commands-list code{background:var(--primary);padding:2px 8px;border-radius:4px;color:#fff}
+    
+    .api-key-input{width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px}
+    .api-hint{font-size:12px;color:var(--text2);margin-top:4px}
+    .features-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .feature-item{background:var(--bg);padding:10px;border-radius:6px;font-size:12px;text-align:center}
   </style>
 </head>
 <body>

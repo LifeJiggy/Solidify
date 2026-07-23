@@ -2,7 +2,7 @@
 Task Persistence Package
 
 Production-grade task persistence for Solidify security audits.
-Exports: TaskPersistence, TaskMetadata, TaskStatus, persistence backends
+Exports: TaskPersistenceManager, TaskStatus, StorageBackend, persistence backends
 
 Author: Solidify Security Team
 Version: 1.0.0
@@ -13,33 +13,26 @@ from typing import Dict, List, Optional, Any
 
 logger = logging.getLogger(__name__)
 
-# Re-export from task-persistence module
+# Re-export from task_persistence modules
 try:
-    from .task_persistence import TaskPersistence, TaskStatus, PersistenceBackend
+    from .task_persistence import TaskPersistenceManager, TaskStatus, StorageBackend
     from .task_saver import TaskSaver
-    from .task_loader import TaskLoader
-    from .task_restore import TaskRestore
+    from .task_loader import TaskLoader, TaskStatus
+    from .task_restore import TaskRestorer
     from .task_serializer import TaskSerializer
-    from .task_backup import TaskBackup
-    from .persistence_factory import PersistenceFactory
-    from .persistence_manager import PersistenceManager
 
     __all__ = [
-        "TaskPersistence",
-        "TaskMetadata",
+        "TaskPersistenceManager",
         "TaskStatus",
-        "PersistenceBackend",
+        "StorageBackend",
         "TaskSaver",
         "TaskLoader",
-        "TaskRestore",
+        "TaskRestorer",
         "TaskSerializer",
-        "TaskBackup",
-        "PersistenceFactory",
-        "PersistenceManager",
     ]
 
 except ImportError as e:
     logger.warning(f"Task persistence modules not fully available: {e}")
     __all__ = []
 
-logger.info(f"✅ TaskPersistence package loaded: {len(__all__)} exports")
+logger.info(f"TaskPersistence package loaded: {len(__all__)} exports")

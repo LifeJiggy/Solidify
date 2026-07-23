@@ -1,18 +1,12 @@
 const API_BASE = 'http://localhost:8000/api';
 
 export async function startAudit(codeOrAddress, chain, options = {}) {
-  const body = {
-    chain,
-    ...options,
-  };
-  
-  // Detect if it's an address (starts with 0x and is 42 chars)
-  if (codeOrAddress && codeOrAddress.startsWith('0x') && codeOrAddress.length === 42) {
+  const body = { chain, ...options };
+  if (codeOrAddress && codeOrAddress.startsWith('0x') && codeOrAddress.length === 42 && !body.address) {
     body.address = codeOrAddress;
-  } else {
+  } else if (!body.code && !body.address) {
     body.code = codeOrAddress;
   }
-  
   const res = await fetch(`${API_BASE}/audit/start`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -25,35 +19,38 @@ export async function streamAudit(taskId, onChunk, onComplete, onError) {
   try {
     const response = await fetch(`${API_BASE}/audit/stream/${taskId}`);
     if (!response.ok) {
-      throw new Error('Stream failed');
+      throw new Error('Stream failed: ' + response.statusText);
     }
-    
+
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    
+    let buffer = '';
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      
-      const text = decoder.decode(value);
-      const lines = text.split('\n');
-      
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           try {
             const data = JSON.parse(line.slice(6));
-            
             if (data.status === 'streaming' && data.chunk) {
               onChunk(data.chunk);
             } else if (data.status === 'completed' && data.result) {
               onComplete(data.result);
+              return;
             } else if (data.status === 'failed') {
               onError(data.error || 'Audit failed');
-            } else if (data.status === 'connecting' || data.status === 'analyzing') {
+              return;
+            } else if (['connecting', 'analyzing', 'scanning', 'queued'].includes(data.status)) {
               onChunk(data.status + '...\n');
             }
           } catch (e) {
-            // Skip parse errors
+            // skip invalid JSON
           }
         }
       }
@@ -88,11 +85,11 @@ export async function getChains() {
   }
 }
 
-export async function chat(message, history = []) {
+export async function chat(message, history = [], provider = 'nvidia', model = 'minimaxai/minimax-m2.5') {
   const res = await fetch(`${API_BASE}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ message, history, provider, model }),
   });
   return res.json();
 }

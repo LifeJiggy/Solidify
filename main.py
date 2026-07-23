@@ -11,9 +11,7 @@ import sys
 import os
 import json
 import importlib
-from pathlib import Path
 from dotenv import load_dotenv
-from concurrent.futures import ThreadPoolExecutor
 
 load_dotenv()
 
@@ -69,8 +67,8 @@ def load_modules():
             "reentrancy": reentrancy_hunter,
             "access_control": access_control_hunter,
         }
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load hunts: {e}")
 
     # providers - AI provider layer
     try:
@@ -78,16 +76,16 @@ def load_modules():
         from providers.nvidia import NVIDIAProvider
 
         MODULES["providers"] = {"nvidia": NVIDIAProvider}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load providers: {e}")
 
     # storage - persistence
     try:
         from storage import Database, Cache
 
         MODULES["storage"] = {"database": Database, "cache": Cache}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load storage: {e}")
 
     # skills - detection skills
     try:
@@ -95,8 +93,8 @@ def load_modules():
         get_skill = getattr(sk, "get_skill_registry", None)
         if get_skill:
             MODULES["skills"] = {"registry": get_skill()}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load skills: {e}")
 
     # rules - detection rules
     try:
@@ -106,8 +104,8 @@ def load_modules():
             "vulnerability": vulnerability_rules,
             "detection": detection_rules,
         }
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load rules: {e}")
 
     # reports - report generation
     try:
@@ -117,141 +115,141 @@ def load_modules():
             "generator": report_generator,
             "markdown": markdown_reporter,
         }
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load reports: {e}")
 
     # validations - input validation
     try:
         from validations import input_validator, output_validator
 
         MODULES["validations"] = {"input": input_validator, "output": output_validator}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load validations: {e}")
 
     # chains - audit chains
     try:
         from chains import reentrancy_scan, full_audit
 
         MODULES["chains"] = {"reentrancy": reentrancy_scan, "audit": full_audit}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load chains: {e}")
 
     # exploitation - exploit engine
     try:
         from exploitation import exploit_engine, exploit_loader
 
         MODULES["exploitation"] = {"engine": exploit_engine, "loader": exploit_loader}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load exploitation: {e}")
 
     # severity - severity detection
     try:
         from severity import critical, high, low
 
         MODULES["severity"] = {"critical": critical, "high": high}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load severity: {e}")
 
     # sessions - session management
     try:
         from sessions import session_factory, hunt_session
 
         MODULES["sessions"] = {"factory": session_factory, "hunt": hunt_session}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load sessions: {e}")
 
     # memory - context memory
     try:
         from memory import context_window, episodic_memory
 
         MODULES["memory"] = {"context": context_window, "episodic": episodic_memory}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load memory: {e}")
 
     # hooks - event hooks
     try:
         from hooks import event_hooks, auth_hooks
 
         MODULES["hooks"] = {"event": event_hooks, "auth": auth_hooks}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load hooks: {e}")
 
     # tools - utility tools
     try:
         from tools import code_scanner, cvss_scorer
 
         MODULES["tools"] = {"scanner": code_scanner, "cvss": cvss_scorer}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load tools: {e}")
 
     # runtime - REPL and execution
     try:
         from runtime import REPL, Executor
 
         MODULES["runtime"] = {"repl": REPL, "executor": Executor}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load runtime: {e}")
 
     # blockchain - blockchain integration
     try:
         from blockchain import rpc_client, etherscan_client
 
         MODULES["blockchain"] = {"rpc": rpc_client, "etherscan": etherscan_client}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load blockchain: {e}")
 
     # audit_engine - audit orchestration
     try:
         from audit_engine import scanner, fuzzer
 
         MODULES["audit_engine"] = {"scanner": scanner, "fuzzer": fuzzer}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load audit_engine: {e}")
 
     # core - core utilities
     try:
         from core import executor, gemini_client
 
         MODULES["core"] = {"executor": executor}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load core: {e}")
 
     # commands - CLI commands
     try:
         from commands import cli, command_executor
 
         MODULES["commands"] = {"cli": cli, "executor": command_executor}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load commands: {e}")
 
     # tasks - task management
     try:
         from tasks import task_executor, task_loader
 
         MODULES["tasks"] = {"executor": task_executor, "loader": task_loader}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load tasks: {e}")
 
     # task_persistence - task persistence
     try:
         tp = importlib.import_module("task-persistence")
         MODULES["task_persistence"] = {"loader": getattr(tp, "task_loader", None)}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load task_persistence: {e}")
 
     # vuln_detection - detection engine (hyphen)
     try:
         vd = importlib.import_module("vuln-detection")
         MODULES["vuln_detection"] = {"detector": getattr(vd, "scan_contract", None)}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load vuln_detection: {e}")
 
     # skills (hyphen)
     try:
         sk = importlib.import_module("skills")
         MODULES["skills"] = {"registry": getattr(sk, "get_skill_registry", None)}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load skills: {e}")
 
     # context_management (hyphen)
     try:
@@ -259,16 +257,16 @@ def load_modules():
         MODULES["context_management"] = {
             "manager": getattr(cm, "context_manager", None)
         }
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load context_management: {e}")
 
     # integrations (hyphen)
     try:
         from integrations import llm_client, provider_bridge
 
         MODULES["integrations"] = {"llm": llm_client, "bridge": provider_bridge}
-    except:
-        pass
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not load integrations: {e}")
 
     logger.info(f"Loaded {len([k for k, v in MODULES.items() if v])} module groups")
 

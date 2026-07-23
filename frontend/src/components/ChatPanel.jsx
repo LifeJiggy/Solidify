@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { chat } from '../api';
 
-export default function ChatPanel({ isOpen, onClose }) {
+export default function ChatPanel({ isOpen, onClose, provider, model }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,15 +17,15 @@ export default function ChatPanel({ isOpen, onClose }) {
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
-    
+
     const userMsg = { role: 'user', content: input };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
-    
+
     try {
-      const data = await chat(input, messages);
-      
+      const data = await chat(input, messages, provider, model);
+
       if (data.message) {
         setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
       } else if (data.error) {
@@ -34,7 +34,7 @@ export default function ChatPanel({ isOpen, onClose }) {
     } catch (e) {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Connection error: ' + e.message }]);
     }
-    
+
     setLoading(false);
   };
 
@@ -53,7 +53,7 @@ export default function ChatPanel({ isOpen, onClose }) {
         <h3>Solidify AI Chat</h3>
         <button onClick={onClose}>X</button>
       </div>
-      
+
       <div className="chat-messages">
         {messages.length === 0 && (
           <div className="chat-welcome">
@@ -66,6 +66,7 @@ export default function ChatPanel({ isOpen, onClose }) {
               <li>DeFi protocol risks</li>
               <li>Any security question!</li>
             </ul>
+            <p className="current-model">Using: {provider} / {model}</p>
           </div>
         )}
         {messages.map((msg, i) => (
@@ -77,7 +78,7 @@ export default function ChatPanel({ isOpen, onClose }) {
         {loading && <div className="chat-loading">Thinking...</div>}
         <div ref={messagesEnd} />
       </div>
-      
+
       <div className="chat-input">
         <input
           type="text"

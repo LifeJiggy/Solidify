@@ -4,7 +4,7 @@ import CodeEditor from './components/CodeEditor';
 import FileUpload from './components/FileUpload';
 import AuditReport from './components/AuditReport';
 import ChatPanel from './components/ChatPanel';
-import { startAudit, getAuditStatus, getAuditReport, exportMarkdown, exportPdf, getPoc, detectGas, detectFrontrun, detectOracle } from './api';
+import { startAudit, streamAudit, getAuditReport, exportMarkdown, exportPdf, getPoc, detectGas, detectFrontrun, detectOracle } from './api';
 
 const SAMPLE_CONTRACT = `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
@@ -12,41 +12,44 @@ pragma solidity ^0.8.0;
 contract SimpleStorage {
     uint256 private value;
     address public owner;
-    
+
     constructor() {
         owner = msg.sender;
     }
-    
+
     function setValue(uint256 _value) public {
         value = _value;
     }
-    
+
     function getValue() public view returns (uint256) {
         return value;
     }
-    
+
     function withdraw() public {
         payable(owner).transfer(address(this).balance);
     }
 }`;
 
-function ModeTab({ mode, active, onClick }) {
-  const labels = { paste: 'Paste Code', upload: 'Upload File', chain: 'On-Chain Scan' };
-  return (
-    <button className={`mode-tab ${active === mode ? 'active' : ''}`} onClick={onClick}>
-      <span>{labels[mode]}</span>
-    </button>
-  );
-}
+const STATUS_STEPS = {
+  queued: 'Queuing audit task...',
+  connecting: 'Connecting to AI provider...',
+  scanning: 'Scanning contract code...',
+  analyzing: 'Analyzing vulnerabilities...',
+  streaming: 'Receiving AI analysis...',
+  completed: 'Finalizing report...',
+  failed: 'Audit failed'
+};
 
-function ProgressBar({ status }) {
+function StatusBar({ status, progress }) {
+  const steps = ['queued', 'connecting', 'scanning', 'analyzing', 'streaming', 'completed'];
+  const currentIdx = steps.indexOf(status || 'queued');
   return (
     <div className="progress-container">
       <div className="progress-steps">
-        {['Queued', 'Scanning', 'Analyzing', 'Patching', 'Complete'].map((step, i) => (
-          <div key={step} className={`step ${['Queued', 'Scanning', 'Analyzing', 'Patching', 'Complete'].indexOf(status) >= i ? 'done' : ''}`}>
+        {steps.map((step, i) => (
+          <div key={step} className={`step ${i <= currentIdx ? 'done' : ''}`}>
             <div className="step-dot" />
-            <span>{step}</span>
+            <span>{step.charAt(0).toUpperCase() + step.slice(1)}</span>
           </div>
         ))}
       </div>
@@ -71,18 +74,41 @@ export default function App() {
   const [showChat, setShowChat] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [version] = useState('1.0.0');
-  const [provider, setProvider] = useState('nvidia');
+  const [provider, setProvider] = useState(() => localStorage.getItem('provider') || 'nvidia');
+  const [model, setModel] = useState(() => localStorage.getItem('model') || 'minimaxai/minimax-m2.5');
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('apiKey') || '');
   const [sessionId, setSessionId] = useState(() => 'sess-' + Date.now().toString(36));
+  const [sessions, setSessions] = useState(() => [{ id: 'sess-default', name: 'Session 1', created: new Date().toLocaleDateString() }]);
   const [providersList] = useState([
-    { id: 'nvidia', name: 'NVIDIA (Minimax)', status: 'active' },
-    { id: 'openai', name: 'OpenAI (GPT)', status: 'available' },
-    { id: 'anthropic', name: 'Anthropic (Claude)', status: 'available' },
-    { id: 'qwen', name: 'Qwen', status: 'available' },
-    { id: 'ollama', name: 'Ollama (Local)', status: 'available' },
+    { id: 'nvidia', name: 'NVIDIA / Minimax', models: ['minimaxai/minimax-m2.5', 'nvidia/llama-3.1-nemotron-70b'], status: 'active' },
+    { id: 'openai', name: 'OpenAI GPT', models: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'], status: 'available' },
+    { id: 'anthropic', name: 'Anthropic Claude', models: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'], status: 'available' },
+    { id: 'qwen', name: 'Qwen', models: ['qwen2.5-coder-32b', 'qwen2.5-coder-7b'], status: 'available' },
+    { id: 'ollama', name: 'Ollama (Local)', models: ['llama3', 'codellama', 'mistral'], status: 'available' },
   ]);
-  const [sessions, setSessions] = useState([
-    { id: sessionId, name: 'Current', created: new Date().toLocaleDateString() },
-  ]);
+
+  const currentProvider = providersList.find(p => p.id === provider);
+  const modelOptions = currentProvider?.models || [];
+
+  const handleProviderChange = (newProvider) => {
+    setProvider(newProvider);
+    localStorage.setItem('provider', newProvider);
+    const newModel = providersList.find(p => p.id === newProvider)?.models?.[0];
+    if (newModel) {
+      setModel(newModel);
+      localStorage.setItem('model', newModel);
+    }
+  };
+
+  const handleModelChange = (newModel) => {
+    setModel(newModel);
+    localStorage.setItem('model', newModel);
+  };
+
+  const handleApiKeyChange = (key) => {
+    setApiKey(key);
+    localStorage.setItem('apiKey', key);
+  };
 
   const handleNewSession = () => {
     const newId = 'sess-' + Date.now().toString(36);
@@ -90,36 +116,57 @@ export default function App() {
     setSessionId(newId);
   };
 
+  const getCodeOrAddress = () => {
+    if (mode === 'chain') return { address: contractAddress, chain };
+    return { code: contract, chain };
+  };
+
   const handleCommand = async (cmd) => {
     setLoading(true);
-    setStreamOutput('Starting ' + cmd + '...\n');
-    setStreamProgress('Starting');
+    setStreamOutput('→ Starting audit with ' + provider + ' / ' + model + '\n');
+    setStreamProgress('Queuing...');
+    setReport(null);
+    setStatus(null);
+
     try {
-      const result = await startAudit(contract, chain, { command: cmd });
+      const payload = getCodeOrAddress();
+      const result = await startAudit(
+        payload.code || payload.address,
+        payload.chain,
+        { command: cmd, provider, model, ...(payload.address ? { address: payload.address } : {}) }
+      );
       setTaskId(result.task_id);
-      
-      // Stream results in real-time
-      const interval = setInterval(async () => {
-        try {
-          const s = await getAuditStatus(result.task_id);
-          setStatus(s);
-          setStreamProgress(s.status + ' (' + s.progress + '%)');
-          setStreamOutput(prev => prev + '\n' + s.status + '...');
-          
-          if (s.status === 'completed') {
-            clearInterval(interval);
-            const r = await getAuditReport(result.task_id);
-            setReport(r);
-            setStreamOutput('Complete!\n\n' + (r.summary || 'Audit done') + '\n\nVulnerabilities: ' + (r.vulnerabilities?.length || 0));
+
+      streamAudit(
+        result.task_id,
+        (chunk) => {
+          if (chunk.endsWith('...\n')) {
+            setStreamProgress(STATUS_STEPS[chunk.replace('...\n', '')] || chunk);
+          } else {
+            setStreamOutput(prev => prev + chunk);
           }
-        } catch (e) {
-          console.log(e);
+        },
+        (auditResult) => {
+          setReport(auditResult);
+          setStatus({ status: 'completed' });
+          setStreamProgress('Complete!');
+          setStreamOutput(prev => prev + '\n\n✓ Audit Complete!\n\n' +
+            'Score: ' + auditResult.score + '/10\n' +
+            'Vulnerabilities: ' + (auditResult.vulnerabilities?.length || 0) + '\n\n' +
+            (auditResult.summary || ''));
+          setLoading(false);
+        },
+        (error) => {
+          setStreamOutput(prev => prev + '\n[Error: ' + error + ']');
+          setStreamProgress('Failed');
+          setLoading(false);
         }
-      }, 1500);
+      );
     } catch (e) {
       setStreamOutput('Error: ' + e.message);
+      setStreamProgress('Failed');
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleAsk = () => setShowAskModal(true);
@@ -127,7 +174,7 @@ export default function App() {
   const handleAskSubmit = async () => {
     setLoading(true);
     try {
-      const result = await startAudit(askQuestion, chain, { command: 'ask' });
+      const result = await startAudit(askQuestion, chain, { command: 'ask', provider, model });
       const r = await getAuditReport(result.task_id);
       setAskAnswer(r.summary || r.vulnerabilities?.[0]?.description || 'No answer');
     } catch (e) {
@@ -136,31 +183,52 @@ export default function App() {
     setLoading(false);
   };
 
-  const handleAudit = async () => {
+  const handleDetectGas = async () => {
     setLoading(true);
+    setStreamOutput('Scanning for gas optimizations...\n');
     try {
-      const payload = mode === 'chain' ? { address: contractAddress, chain } : { code: contract, chain };
-      const result = await startAudit(payload.code || payload.address, chain, mode === 'chain' ? { address: contractAddress } : {});
-      setTaskId(result.task_id);
-      pollStatus(result.task_id);
+      const payload = getCodeOrAddress();
+      const result = await detectGas(payload.code || payload.address);
+      const issues = result.optimizations || [];
+      setStreamOutput(issues.length > 0
+        ? 'Gas Optimizations Found:\n\n' + issues.map(i => '- ' + i.type + ': ' + i.recommendation + ' (' + i.savings + ')').join('\n')
+        : 'No gas optimizations found. Code looks efficient!');
     } catch (e) {
-      alert('Error: ' + e.message);
+      setStreamOutput('Error: ' + e.message);
     }
     setLoading(false);
   };
 
-  const pollStatus = async (id) => {
-    const interval = setInterval(async () => {
-      try {
-        const s = await getAuditStatus(id);
-        setStatus(s);
-        if (s.status === 'completed') {
-          clearInterval(interval);
-          const r = await getAuditReport(id);
-          setReport(r);
-        }
-      } catch (e) { console.log(e); }
-    }, 2000);
+  const handleDetectFrontrun = async () => {
+    setLoading(true);
+    setStreamOutput('Scanning for front-run vulnerabilities...\n');
+    try {
+      const payload = getCodeOrAddress();
+      const result = await detectFrontrun(payload.code || payload.address);
+      const issues = result.vulnerabilities || [];
+      setStreamOutput(issues.length > 0
+        ? 'Front-Run Risks Found:\n\n' + issues.map(i => '- [' + i.severity + '] ' + i.type + '\n  ' + i.recommendation).join('\n')
+        : 'No front-run vulnerabilities detected.');
+    } catch (e) {
+      setStreamOutput('Error: ' + e.message);
+    }
+    setLoading(false);
+  };
+
+  const handleDetectOracle = async () => {
+    setLoading(true);
+    setStreamOutput('Scanning for oracle manipulation risks...\n');
+    try {
+      const payload = getCodeOrAddress();
+      const result = await detectOracle(payload.code || payload.address);
+      const issues = result.vulnerabilities || [];
+      setStreamOutput(issues.length > 0
+        ? 'Oracle Risks Found:\n\n' + issues.map(i => '- [' + i.severity + '] ' + i.type + '\n  ' + i.recommendation).join('\n')
+        : 'No oracle manipulation risks detected.');
+    } catch (e) {
+      setStreamOutput('Error: ' + e.message);
+    }
+    setLoading(false);
   };
 
   const exportJSON = () => {
@@ -178,9 +246,8 @@ export default function App() {
     try {
       const md = await exportMarkdown(taskId);
       const blob = new Blob([md], { type: 'text/markdown' });
-      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = URL.createObjectURL(blob);
       a.download = 'audit-' + Date.now() + '.md';
       a.click();
     } catch (e) {
@@ -191,12 +258,11 @@ export default function App() {
   const handleExportPdf = async () => {
     if (!taskId) return;
     try {
-      const pdf = await exportPdf(taskId);
-      const blob = new Blob([pdf], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
+      const txt = await exportPdf(taskId);
+      const blob = new Blob([txt], { type: 'text/plain' });
       const a = document.createElement('a');
-      a.href = url;
-      a.download = 'audit-' + Date.now() + '.pdf';
+      a.href = URL.createObjectURL(blob);
+      a.download = 'audit-' + Date.now() + '.txt';
       a.click();
     } catch (e) {
       alert('Export failed: ' + e.message);
@@ -210,9 +276,8 @@ export default function App() {
       if (pocs.pocs?.length > 0) {
         const pocContent = pocs.pocs.map(p => p.exploit_code).join('\n\n');
         const blob = new Blob([pocContent], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
+        a.href = URL.createObjectURL(blob);
         a.download = 'exploits-' + Date.now() + '.sol';
         a.click();
       } else {
@@ -221,57 +286,6 @@ export default function App() {
     } catch (e) {
       alert('PoC generation failed: ' + e.message);
     }
-  };
-
-  const handleDetectGas = async () => {
-    setLoading(true);
-    setStreamOutput('Scanning for gas optimizations...\n');
-    try {
-      const result = await detectGas(contract);
-      const issues = result.optimizations || [];
-      if (issues.length > 0) {
-        setStreamOutput('Gas Optimizations Found:\n\n' + issues.map(i => '- ' + i.type + ': ' + i.recommendation + ' (' + i.savings + ')').join('\n'));
-      } else {
-        setStreamOutput('No gas optimizations found. Code looks efficient!');
-      }
-    } catch (e) {
-      setStreamOutput('Error: ' + e.message);
-    }
-    setLoading(false);
-  };
-
-  const handleDetectFrontrun = async () => {
-    setLoading(true);
-    setStreamOutput('Scanning for front-run vulnerabilities...\n');
-    try {
-      const result = await detectFrontrun(contract);
-      const issues = result.vulnerabilities || [];
-      if (issues.length > 0) {
-        setStreamOutput('Front-Run Risks Found:\n\n' + issues.map(i => '- [' + i.severity + '] ' + i.type + '\n  ' + i.recommendation).join('\n'));
-      } else {
-        setStreamOutput('No front-run vulnerabilities detected.');
-      }
-    } catch (e) {
-      setStreamOutput('Error: ' + e.message);
-    }
-    setLoading(false);
-  };
-
-  const handleDetectOracle = async () => {
-    setLoading(true);
-    setStreamOutput('Scanning for oracle manipulation risks...\n');
-    try {
-      const result = await detectOracle(contract);
-      const issues = result.vulnerabilities || [];
-      if (issues.length > 0) {
-        setStreamOutput('Oracle Risks Found:\n\n' + issues.map(i => '- [' + i.severity + '] ' + i.type + '\n  ' + i.recommendation).join('\n'));
-      } else {
-        setStreamOutput('No oracle manipulation risks detected.');
-      }
-    } catch (e) {
-      setStreamOutput('Error: ' + e.message);
-    }
-    setLoading(false);
   };
 
   return (
@@ -285,16 +299,18 @@ export default function App() {
         <div className="top-bar">
           <span className="version">v{version}</span>
           <span className="provider">AI: {provider}</span>
-          <span className="session">Session: {sessionId.slice(0,8)}</span>
+          <span className="session">Session: {sessionId.slice(0, 8)}</span>
           <button className="settings-btn" onClick={() => setShowSettings(true)}>Settings</button>
           <button className="chat-toggle" onClick={() => setShowChat(true)}>Chat with AI</button>
         </div>
       </header>
-      
+
       <nav className="mode-tabs">
-        <ModeTab mode="paste" active={mode} onClick={() => setMode('paste')} />
-        <ModeTab mode="upload" active={mode} onClick={() => setMode('upload')} />
-        <ModeTab mode="chain" active={mode} onClick={() => setMode('chain')} />
+        {['paste', 'upload', 'chain'].map(m => (
+          <button key={m} className={`mode-tab ${mode === m ? 'active' : ''}`} onClick={() => setMode(m)}>
+            <span>{m === 'paste' ? 'Paste Code' : m === 'upload' ? 'Upload File' : 'On-Chain Scan'}</span>
+          </button>
+        ))}
       </nav>
 
       <main>
@@ -323,12 +339,7 @@ export default function App() {
           <section className="chain-section">
             <div className="address-input">
               <label>Contract Address</label>
-              <input
-                type="text"
-                value={contractAddress}
-                onChange={(e) => setContractAddress(e.target.value)}
-                placeholder="0x..."
-              />
+              <input type="text" value={contractAddress} onChange={(e) => setContractAddress(e.target.value)} placeholder="0x..." />
               <p className="hint">Enter any verified contract address to fetch source from explorer</p>
             </div>
           </section>
@@ -358,11 +369,7 @@ export default function App() {
           <div className="modal-overlay">
             <div className="modal">
               <h3>Ask Security Question</h3>
-              <textarea
-                value={askQuestion}
-                onChange={(e) => setAskQuestion(e.target.value)}
-                placeholder="How do I prevent reentrancy..."
-              />
+              <textarea value={askQuestion} onChange={(e) => setAskQuestion(e.target.value)} placeholder="How do I prevent reentrancy..." />
               <div className="modal-actions">
                 <button onClick={() => setShowAskModal(false)}>Cancel</button>
                 <button className="primary" onClick={handleAskSubmit}>Ask AI</button>
@@ -372,8 +379,8 @@ export default function App() {
           </div>
         )}
 
-        {loading && status && <ProgressBar status={status.status} />}
-        
+        {loading && status && <StatusBar status={status.status} progress={status.progress} />}
+
         {(streamOutput || streamProgress) && (
           <div className="stream-panel">
             <div className="stream-header">
@@ -385,9 +392,9 @@ export default function App() {
 
         {report && <AuditReport report={report} />}
       </main>
-      
-      <ChatPanel isOpen={showChat} onClose={() => setShowChat(false)} />
-      
+
+      <ChatPanel isOpen={showChat} onClose={() => setShowChat(false)} provider={provider} model={model} />
+
       {showSettings && (
         <div className="modal-overlay">
           <div className="modal settings-modal">
@@ -395,21 +402,41 @@ export default function App() {
               <h3>Settings</h3>
               <button onClick={() => setShowSettings(false)}>X</button>
             </div>
-            
+
             <div className="settings-section">
               <h4>Solidify v{version}</h4>
               <p className="tagline">Web3 Smart Contract Security Auditor</p>
             </div>
-            
+
             <div className="settings-section">
               <h4>AI Provider</h4>
-              <select value={provider} onChange={(e) => setProvider(e.target.value)}>
-                {providersList.map(p => (
-                  <option key={p.id} value={p.id}>{p.name} ({p.status})</option>
-                ))}
+              <select value={provider} onChange={(e) => handleProviderChange(e.target.value)}>
+                {providersList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
-            
+
+            <div className="settings-section">
+              <h4>Model</h4>
+              <select value={model} onChange={(e) => handleModelChange(e.target.value)}>
+                {modelOptions.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+
+            <div className="settings-section">
+              <h4>API Key</h4>
+              <input type="password" value={apiKey} onChange={(e) => handleApiKeyChange(e.target.value)} placeholder="Enter API key (optional for default)" className="api-key-input" />
+              <p className="api-hint">Leave empty to use default. Add key for BYOA.</p>
+            </div>
+
+            <div className="settings-section">
+              <h4>Detection Features</h4>
+              <div className="features-grid">
+                {['Reentrancy Detection', 'Access Control', 'Integer Overflow', 'Unchecked Calls', 'tx.origin Checks', 'Oracle Manipulation', 'Front-Run Detection', 'Gas Optimization'].map(f => (
+                  <div key={f} className="feature-item">{f}</div>
+                ))}
+              </div>
+            </div>
+
             <div className="settings-section">
               <h4>Sessions</h4>
               <div className="sessions-list">
@@ -422,14 +449,14 @@ export default function App() {
               </div>
               <button className="secondary-btn" onClick={handleNewSession}>New Session</button>
             </div>
-            
+
             <div className="settings-section">
               <h4>Available Commands</h4>
               <div className="commands-list">
-                <code>audit</code> - Full contract audit<br/>
-                <code>hunt</code> - Hunt vulnerabilities<br/>
-                <code>scan</code> - Quick scan<br/>
-                <code>ask</code> - Ask security question<br/>
+                <code>audit</code> - Full contract audit<br />
+                <code>hunt</code> - Hunt vulnerabilities<br />
+                <code>scan</code> - Quick scan<br />
+                <code>ask</code> - Ask security question<br />
                 <code>chat</code> - AI chat
               </div>
             </div>

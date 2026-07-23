@@ -36,11 +36,11 @@ setup(
     install_requires=requirements,
     entry_points={
         "console_scripts": [
-            "Solidify=solidify.cli:main",
+            "solidify=main:main",
         ],
     },
     include_package_data=True,
     package_data={
-        "solidify": ["config/*.json"],
+        "Solidify": ["config/*.json"],
     },
 )

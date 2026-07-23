@@ -2,7 +2,7 @@
 Reconnaissance Package
 
 Production-grade recon for Web3 smart contract security auditing.
-Exports: ReconEngine, ReconResult, TechType
+Exports: TechDetector, TechCategory, recon tools
 
 Author: Solidify Security Team
 Version: 1.0.0
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Re-export from recon modules
 try:
-    from .tech_detection import TechDetector, TechType
+    from .tech_detection import TechDetector, TechCategory
     from .endpoint_discovery import EndpointDiscovery
     from .subdomain_enum import SubdomainEnumeration
     from .js_analysis import JSAnalyzer
@@ -26,7 +26,7 @@ try:
 
     __all__ = [
         "TechDetector",
-        "TechType",
+        "TechCategory",
         "EndpointDiscovery",
         "SubdomainEnumeration",
         "JSAnalyzer",
@@ -40,4 +40,4 @@ except ImportError as e:
     logger.warning(f"Recon modules not fully available: {e}")
     __all__ = []
 
-logger.info(f"✅ Recon package loaded: {len(__all__)} exports")
+logger.info(f"Recon package loaded: {len(__all__)} exports")

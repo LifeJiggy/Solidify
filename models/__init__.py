@@ -5,7 +5,7 @@ All model series for smart contract security auditing
 Author: Peace Stephen (Tech Lead)
 """
 
-from models.model_registry import (
+from .model_registry import (
     SolidifyModel,
     SecurityFocus,
     ModelProvider,
@@ -32,6 +32,3 @@ __all__ = [
     "select_best_model",
     "AVAILABLE_MODELS",
 ]
-
-print(f"[OK] Solidify Models loaded: {len(AVAILABLE_MODELS)} models available")
-print(f"   Models: {', '.join(list(AVAILABLE_MODELS.keys())[:10])}...")
