@@ -8,7 +8,6 @@ Description: NVIDIA provider with security-focused models for vulnerability dete
 
 import os
 import re
-import json
 import logging
 import html
 from typing import Dict, Any, Optional, List, AsyncIterator
@@ -89,10 +88,11 @@ class NvidiaConfig:
     api_key: str
     model: str = "nvidia/nvidia-nemotron-nano-9b-v2"
     base_url: str = "https://integrate.api.nvidia.com/v1"
-    temperature: float = 0.7
-    max_tokens: int = 8192
-    timeout: int = 120
+    temperature: float = 0.3
+    max_tokens: int = 16384
+    timeout: int = 180
     max_retries: int = 3
+    retry_delay: float = 2.0
 
 
 @dataclass
@@ -387,7 +387,7 @@ class NvidiaProvider:
 
         logger.info(f"NvidiaProvider initialized: {self.config.model}")
 
-    async def _get_client(self) -> "httpx.AsyncClient":
+    async def _get_client(self):
         if self._http_pool is None:
             import httpx
             limits = httpx.Limits(max_keepalive_connections=5, max_connections=10)
@@ -407,145 +407,168 @@ class NvidiaProvider:
         max_tokens: Optional[int] = None,
         **kwargs,
     ) -> NvidiaResponse:
-        """Generate response from prompt"""
-        try:
-            import httpx
+        """Generate response from prompt with retry logic"""
+        import httpx as _httpx
 
-            self.total_requests += 1
+        self.total_requests += 1
+        model = model or self.config.model
 
-            model = model or self.config.model
-            if model not in MODELS and model != self.config.model:
-                logger.warning(f"NvidiaProvider.generate: unknown model '{model}', using default")
-                model = self.config.model
-
-            if not self.config.api_key or len(self.config.api_key) < 8:
-                self.failed_requests += 1
-                return NvidiaResponse(content="", model=model, finish_reason="error",
-                                       metadata={"error": "Invalid API key"})
-
-            headers = {
-                "Authorization": f"Bearer {self.config.api_key}",
-                "Content-Type": "application/json",
-            }
-
-            safe_prompt = prompt[:80000]
-            messages = [{"role": "user", "content": safe_prompt}]
-
-            payload = {
-                "model": model,
-                "messages": messages,
-                "temperature": temperature or self.config.temperature,
-            }
-
-            if max_tokens:
-                payload["max_tokens"] = min(max_tokens, 16384)
-            elif self.config.max_tokens:
-                payload["max_tokens"] = min(self.config.max_tokens, 16384)
-
-            payload.update(kwargs)
-
-            client = await self._get_client()
-            response = await client.post(
-                f"{self.config.base_url}/chat/completions",
-                json=payload,
-                headers=headers,
-            )
-
-            if response.status_code == 429:
-                self.rate_limit_hits += 1
-                logger.warning(f"NVIDIA rate limited after {self.total_requests} requests")
-                return NvidiaResponse(
-                    content="", model=model, finish_reason="rate_limited",
-                )
-
-            if response.status_code != 200:
-                self.failed_requests += 1
-                logger.error(f"NVIDIA HTTP {response.status_code}: {response.text[:200]}")
-                return NvidiaResponse(
-                    content="", model=model, finish_reason="error",
-                    metadata={"http_status": response.status_code}
-                )
-
-            data = response.json()
-
-            if "choices" in data and len(data["choices"]) > 0:
-                msg = data["choices"][0]["message"]
-                raw_content = msg.get("content") or msg.get("reasoning_content") or msg.get("reasoning") or ""
-                if not raw_content:
-                    raw_content = ""
-                clean_content = "".join(c for c in raw_content if c >= " " or c in "\n\r\t")
-                return NvidiaResponse(
-                    content=clean_content,
-                    model=model,
-                    usage=data.get("usage", {}),
-                    finish_reason=data["choices"][0].get("finish_reason", "stop"),
-                    raw_response=data,
-                )
-            else:
-                self.failed_requests += 1
-                return NvidiaResponse(
-                    content="", model=model, finish_reason="error"
-                )
-        except httpx.TimeoutException:
+        if not self.config.api_key or len(self.config.api_key) < 8:
             self.failed_requests += 1
-            logger.error(f"NVIDIA generate timed out after {self.config.timeout}s")
-            return NvidiaResponse(content="", model=model or self.config.model, finish_reason="timeout")
-        except Exception as e:
-            self.failed_requests += 1
-            logger.error(f"NVIDIA generate error: {e}")
-            return NvidiaResponse(
-                content="", model=model or self.config.model, finish_reason="error"
-            )
+            return NvidiaResponse(content="", model=model, finish_reason="error",
+                                   metadata={"error": "Invalid API key"})
+
+        last_error = ""
+        for attempt in range(self.config.max_retries):
+            try:
+                headers = {
+                    "Authorization": f"Bearer {self.config.api_key}",
+                    "Content-Type": "application/json",
+                }
+
+                safe_prompt = prompt[:80000]
+                messages = [{"role": "user", "content": safe_prompt}]
+
+                payload = {
+                    "model": model,
+                    "messages": messages,
+                    "temperature": temperature or self.config.temperature,
+                }
+
+                tok = max_tokens or self.config.max_tokens or 16384
+                payload["max_tokens"] = min(tok, 16384)
+
+                payload.update(kwargs)
+
+                client = await self._get_client()
+                response = await client.post(
+                    f"{self.config.base_url}/chat/completions",
+                    json=payload,
+                    headers=headers,
+                )
+
+                if response.status_code == 429:
+                    self.rate_limit_hits += 1
+                    wait = self.config.retry_delay * (attempt + 1)
+                    logger.warning(f"NVIDIA rate limited, retry {attempt+1} in {wait}s")
+                    import asyncio
+                    await asyncio.sleep(wait)
+                    continue
+
+                if response.status_code in (502, 503, 504):
+                    wait = self.config.retry_delay * (attempt + 1)
+                    logger.warning(f"NVIDIA HTTP {response.status_code}, retry {attempt+1} in {wait}s")
+                    import asyncio
+                    await asyncio.sleep(wait)
+                    last_error = f"HTTP {response.status_code}"
+                    continue
+
+                if response.status_code != 200:
+                    self.failed_requests += 1
+                    logger.error(f"NVIDIA HTTP {response.status_code}: {response.text[:200]}")
+                    return NvidiaResponse(
+                        content="", model=model, finish_reason="error",
+                        metadata={"http_status": response.status_code}
+                    )
+
+                data = response.json()
+
+                if "choices" in data and len(data["choices"]) > 0:
+                    msg = data["choices"][0]["message"]
+                    raw_content = msg.get("content") or msg.get("reasoning_content") or msg.get("reasoning") or ""
+                    if not raw_content:
+                        raw_content = ""
+                    clean_content = "".join(c for c in raw_content if c >= " " or c in "\n\r\t")
+                    return NvidiaResponse(
+                        content=clean_content,
+                        model=model,
+                        usage=data.get("usage", {}),
+                        finish_reason=data["choices"][0].get("finish_reason", "stop"),
+                        raw_response=data,
+                    )
+                else:
+                    self.failed_requests += 1
+                    return NvidiaResponse(
+                        content="", model=model, finish_reason="error"
+                    )
+
+            except _httpx.TimeoutException:
+                logger.warning(f"NVIDIA timeout on attempt {attempt+1}")
+                last_error = "timeout"
+                continue
+            except Exception as e:
+                logger.error(f"NVIDIA error on attempt {attempt+1}: {e}")
+                last_error = str(e)
+                continue
+
+        self.failed_requests += 1
+        return NvidiaResponse(
+            content="", model=model, finish_reason="error",
+            metadata={"error": f"All {self.config.max_retries} retries failed: {last_error}"}
+        )
 
     async def generate_stream(self, prompt: str, **kwargs) -> AsyncIterator[str]:
-        """Generate streaming response"""
+        """Generate streaming response with retry"""
+        import httpx as _httpx
+
         model = kwargs.get("model") or self.config.model
         temperature = kwargs.get("temperature", self.config.temperature)
 
-        try:
-            import httpx
+        if not self.config.api_key or len(self.config.api_key) < 8:
+            yield "[NVIDIA Error: Invalid API key]"
+            return
 
-            if not self.config.api_key or len(self.config.api_key) < 8:
-                yield "[NVIDIA Error: Invalid API key]"
-                return
+        for attempt in range(self.config.max_retries):
+            try:
+                headers = {
+                    "Authorization": f"Bearer {self.config.api_key}",
+                    "Content-Type": "application/json",
+                }
 
-            headers = {
-                "Authorization": f"Bearer {self.config.api_key}",
-                "Content-Type": "application/json",
-            }
+                payload = {
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt[:80000]}],
+                    "temperature": temperature,
+                    "stream": True,
+                    "max_tokens": min(self.config.max_tokens, 16384),
+                }
 
-            payload = {
-                "model": model,
-                "messages": [{"role": "user", "content": prompt[:80000]}],
-                "temperature": temperature,
-                "stream": True,
-                "max_tokens": self.config.max_tokens,
-            }
+                from .streaming import StreamingProcessor
 
-            from .streaming import StreamingProcessor
+                client = await self._get_client()
+                async with client.stream(
+                    "POST",
+                    f"{self.config.base_url}/chat/completions",
+                    json=payload,
+                    headers=headers,
+                ) as resp:
+                    if resp.status_code in (502, 503, 504):
+                        await resp.aread()
+                        wait = self.config.retry_delay * (attempt + 1)
+                        logger.warning(f"NVIDIA stream HTTP {resp.status_code}, retry {attempt+1} in {wait}s")
+                        import asyncio
+                        await asyncio.sleep(wait)
+                        continue
 
-            client = await self._get_client()
-            async with client.stream(
-                "POST",
-                f"{self.config.base_url}/chat/completions",
-                json=payload,
-                headers=headers,
-            ) as resp:
-                if resp.status_code != 200:
-                    body = await resp.aread()
-                    yield f"[NVIDIA Error: HTTP {resp.status_code}]"
+                    if resp.status_code != 200:
+                        await resp.aread()
+                        yield f"[NVIDIA Error: HTTP {resp.status_code}]"
+                        return
+
+                    processor = StreamingProcessor(provider="nvidia")
+                    async for content in processor.process_stream_simple(resp.aiter_lines()):
+                        yield content
                     return
 
-                processor = StreamingProcessor(provider="nvidia")
-                async for content in processor.process_stream_simple(resp.aiter_lines()):
-                    yield content
+            except _httpx.TimeoutException:
+                logger.warning(f"NVIDIA stream timeout on attempt {attempt+1}")
+                continue
+            except Exception as e:
+                logger.error(f"NVIDIA stream error: {sanitize_error(str(e))}")
+                yield f"[NVIDIA Error: {sanitize_error(str(e))[:100]}]"
+                return
 
-        except httpx.TimeoutException:
-            logger.error(f"NVIDIA stream timed out after {self.config.timeout}s")
-            yield "[NVIDIA Error: Stream timed out]"
-        except Exception as e:
-            logger.error(f"NVIDIA stream error: {sanitize_error(str(e))}")
-            yield f"[NVIDIA Error: {sanitize_error(str(e))[:100]}]"
+        yield "[NVIDIA Error: All retries failed]"
 
     async def chat(self, messages: List[Dict[str, str]], **kwargs) -> NvidiaResponse:
         """Chat with conversation history"""

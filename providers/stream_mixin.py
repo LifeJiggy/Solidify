@@ -3,9 +3,10 @@
 import asyncio
 import json
 import logging
-import html
 from typing import AsyncIterator, Optional, Dict, Any, Callable
 from datetime import datetime
+
+from .streaming import sanitize_content
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,6 @@ class StreamMixin:
         stream_callback: Optional[Callable[[str], None]] = None,
         **kwargs,
     ) -> str:
-        """Generate with streaming support - override in subclass"""
         raise NotImplementedError("Subclass must implement stream_generate")
 
     async def stream_chat(
@@ -35,7 +35,6 @@ class StreamMixin:
         stream_callback: Optional[Callable[[str], None]] = None,
         **kwargs,
     ) -> str:
-        """Chat with streaming - override in subclass"""
         prompt = "\n".join(
             [f"{m.get('role', 'user')}: {m.get('content', '')}" for m in messages]
         )
@@ -43,20 +42,15 @@ class StreamMixin:
 
 
 def parse_sse_chunk(chunk: str) -> Optional[Dict[str, Any]]:
-    """Parse Server-Sent Events chunk"""
     if not chunk:
         return None
-
     chunk = chunk.strip()
     if not chunk:
         return None
-
     if chunk.startswith("data: "):
         chunk = chunk[6:]
-
     if chunk == "[DONE]":
         return {"done": True}
-
     try:
         return json.loads(chunk)
     except json.JSONDecodeError:
@@ -64,36 +58,28 @@ def parse_sse_chunk(chunk: str) -> Optional[Dict[str, Any]]:
 
 
 def extract_content_from_response(data: Dict[str, Any]) -> str:
-    """Extract content from provider response"""
     if data.get("done"):
         return ""
-
     if "raw" in data:
         return data["raw"]
-
     if "choices" in data and data["choices"]:
         choice = data["choices"][0]
         delta = choice.get("delta", {})
         return delta.get("content", "")
-
     if "message" in data:
         return data["message"].get("content", "")
-
     return ""
 
 
 def create_stream_handler(provider_name: str):
-    """Create a stream handler for a specific provider"""
-
     async def handle_stream(
         stream: AsyncIterator[str],
         callback: Optional[Callable[[str], None]] = None,
         on_chunk: Optional[Callable[[str, int], None]] = None,
     ) -> str:
-        """Handle streaming response from any provider"""
         full_response = ""
         chunk_count = 0
-        max_content_chars = 100000
+        max_chars = 100000
 
         try:
             async for chunk in stream:
@@ -111,28 +97,25 @@ def create_stream_handler(provider_name: str):
                 if data.get("done"):
                     break
 
-                content = extract_content_from_response(data)
+                content = sanitize_content(extract_content_from_response(data))
                 if content:
-                    if len(full_response) + len(content) > max_content_chars:
-                        logger.warning(f"[{provider_name}] Stream exceeded {max_content_chars} chars, truncating")
+                    if len(full_response) + len(content) > max_chars:
+                        logger.warning(f"[{provider_name}] Exceeded {max_chars} chars")
                         break
                     full_response += content
                     chunk_count += 1
 
                     if callback:
                         callback(content)
-
                     if on_chunk:
                         on_chunk(content, chunk_count)
 
                     if chunk_count > 10000:
-                        logger.warning(f"[{provider_name}] Stream exceeded 10000 chunks, stopping")
+                        logger.warning(f"[{provider_name}] Exceeded 10000 chunks")
                         break
 
                     if logger.isEnabledFor(logging.DEBUG):
-                        logger.debug(
-                            f"[{provider_name}] Chunk #{chunk_count}: {content[:50]}..."
-                        )
+                        logger.debug(f"[{provider_name}] Chunk #{chunk_count}: {content[:50]}...")
 
         except asyncio.TimeoutError:
             logger.error(f"[{provider_name}] Stream timed out")
@@ -147,8 +130,6 @@ def create_stream_handler(provider_name: str):
 
 
 class StreamResult:
-    """Result wrapper for streaming responses"""
-
     def __init__(
         self,
         content: str,
@@ -167,20 +148,14 @@ class StreamResult:
 
 
 async def stream_to_async_iterator(stream: AsyncIterator[str]) -> AsyncIterator[str]:
-    """Convert any stream to async iterator"""
     async for item in stream:
         yield item
 
 
 def merge_streams(*streams: AsyncIterator[str]) -> AsyncIterator[str]:
-    """Merge multiple streams into one"""
-
     async def _merge():
-        import asyncio
-
         tasks = [asyncio.create_task(_aiter(s)) for s in streams]
         done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-
         for t in done:
             async for item in t.result():
                 yield item
@@ -193,61 +168,42 @@ def merge_streams(*streams: AsyncIterator[str]) -> AsyncIterator[str]:
 
 
 async def collect_stream(stream: AsyncIterator[str]) -> str:
-    """Collect all stream content into a single string"""
     result = ""
     async for chunk in stream:
         if isinstance(chunk, bytes):
             chunk = chunk.decode("utf-8")
-
         data = parse_sse_chunk(chunk)
         if data and not data.get("done"):
-            content = extract_content_from_response(data)
+            content = sanitize_content(extract_content_from_response(data))
             result += content
-
     return result
 
 
 def create_unified_stream_wrapper(provider, provider_name: str):
-    """Create a unified streaming wrapper for any provider"""
-
-    async def generate_stream(
-        self,
-        prompt: str,
-        stream_callback: Optional[Callable[[str], None]] = None,
-        **kwargs,
-    ) -> AsyncIterator[str]:
-        """Wrap provider's generate_stream method"""
+    async def generate_stream(self, prompt: str, **kwargs) -> AsyncIterator[str]:
         stream = provider.generate_stream(prompt, **kwargs)
         handler = create_stream_handler(provider_name)
-
-        full_response = await handler(stream, stream_callback)
-
+        full_response = await handler(stream, kwargs.get("stream_callback"))
         return full_response
-
     return generate_stream
 
 
 def enable_streaming_for_provider(provider_class, provider_name: str):
-    """Decorator to enable streaming for a provider class"""
     original_methods = {}
-
     for method_name in ["generate", "generate_stream", "chat"]:
         if hasattr(provider_class, method_name):
-            original_method = getattr(provider_class, method_name)
+            original = getattr(provider_class, method_name)
 
-            async def make_streaming_wrapper(original, name):
+            async def make_wrapper(orig, name):
                 async def wrapper(self, *args, stream_callback=None, **kwargs):
                     if stream_callback and hasattr(self, "generate_stream"):
-                        stream = await self.generate_stream(*args, **kwargs)
+                        stream = self.generate_stream(*args, **kwargs)
                         handler = create_stream_handler(name)
                         return await handler(stream, stream_callback)
-                    return await original(self, *args, **kwargs)
-
+                    return await orig(self, *args, **kwargs)
                 return wrapper
 
-            original_methods[method_name] = make_streaming_wrapper(
-                original_method, provider_name
-            )
+            original_methods[method_name] = make_wrapper(original, provider_name)
 
     for method_name, wrapper in original_methods.items():
         setattr(provider_class, f"{method_name}_with_stream", wrapper)
@@ -256,13 +212,9 @@ def enable_streaming_for_provider(provider_class, provider_name: str):
 
 
 def add_streaming_capability(provider_instance, provider_name: str):
-    """Add streaming capability to a provider instance"""
-
     async def stream_generate(prompt: str, **kwargs) -> str:
-        """Generate with streaming callback"""
         stream = provider_instance.generate_stream(prompt, **kwargs)
         handler = create_stream_handler(provider_name)
-
         callback = kwargs.pop("stream_callback", None)
         return await handler(stream, callback)
 

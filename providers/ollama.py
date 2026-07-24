@@ -6,7 +6,6 @@ Author: Peace Stephen (Tech Lead)
 Description: Ollama provider for local smart contract analysis
 """
 
-import os
 import asyncio
 import logging
 from typing import Dict, Any, Optional, List, AsyncIterator
@@ -340,6 +339,8 @@ class OllamaProvider:
                 "options": {"num_predict": kwargs.get("max_tokens", self.config.max_tokens)},
             }
 
+            from .streaming import StreamingProcessor
+
             timeout = aiohttp.ClientTimeout(total=self.config.timeout)
             connector = aiohttp.TCPConnector(limit=10, force_close=True)
             async with aiohttp.ClientSession(connector=connector) as session:
@@ -349,30 +350,28 @@ class OllamaProvider:
                     timeout=timeout,
                 ) as resp:
                     if resp.status != 200:
-                        error = await resp.text()
-                        yield f'{{"error": "HTTP {resp.status}: {error[:200]}"}}'
+                        yield f"[Ollama Error: HTTP {resp.status}]"
                         return
 
-                    async for line in resp.content:
-                        line = line.decode("utf-8").strip()
-                        if not line:
-                            continue
-                        try:
-                            obj = json.loads(line)
-                            if obj.get("done", False):
-                                break
-                            msg = obj.get("message", {})
-                            content = msg.get("content", "")
-                            if content:
-                                yield content
-                        except json.JSONDecodeError:
-                            yield line
+                    processor = StreamingProcessor(provider="ollama")
+                    async for content in processor.process_stream_simple(
+                        _aiohttp_line_stream(resp)
+                    ):
+                        yield content
+
         except asyncio.TimeoutError:
             logger.error("Ollama stream timed out")
-            yield '{"error": "Stream timed out"}'
+            yield "[Ollama Error: Stream timed out]"
         except Exception as e:
             logger.error(f"Ollama stream error: {e}")
-            yield f'{{"error": "{str(e)[:200]}"}}'
+            yield f"[Ollama Error: {str(e)[:100]}]"
+
+
+async def _aiohttp_line_stream(resp) -> AsyncIterator[str]:
+    async for raw in resp.content:
+        line = raw.decode("utf-8", errors="replace").strip()
+        if line:
+            yield line
 
     async def list_models(self) -> List[str]:
         """List available local models"""
@@ -427,7 +426,7 @@ class OllamaProvider:
             loop = asyncio.get_event_loop()
             if loop.is_running():
                 return True
-            with aiohttp.ClientSession() as session:
+            with aiohttp.ClientSession():
                 return True
         except (ImportError, Exception) as e:
             logger.debug(f"Ollama availability check failed: {e}")

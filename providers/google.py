@@ -133,28 +133,28 @@ class GoogleProvider:
     async def generate_stream(self, prompt: str) -> AsyncIterator[str]:
         """Generate streaming response"""
         if not self._client:
-            yield '{"error": "Google AI client not initialized"}'
+            yield "[Google Error: Client not initialized]"
             return
 
         try:
+            from .streaming import StreamingProcessor
+
             safe_prompt = prompt[:80000]
-            response = self._client.generate_content_async(safe_prompt, stream=True)
-            chunk_count = 0
-            async for chunk in response:
-                if not chunk or not hasattr(chunk, "text"):
-                    continue
-                if chunk.text:
-                    chunk_count += 1
-                    sanitized = "".join(c for c in chunk.text if c >= " " or c in "\n\r\t")
-                    yield sanitized
-                if chunk_count > 5000:
-                    logger.warning("Google stream: max 5000 chunks reached")
-                    break
-            logger.info(f"Google stream complete: {chunk_count} chunks")
+            raw_stream = _google_raw_stream(self._client, safe_prompt)
+            processor = StreamingProcessor(provider="google")
+            async for content in processor.process_stream_simple(raw_stream):
+                yield content
+
         except Exception as e:
-            err_str = str(e)[:200]
-            logger.error(f"Google stream error: {err_str}")
-            yield f'{{"error": "{err_str}"}}'
+            logger.error(f"Google stream error: {e}")
+            yield f"[Google Error: {str(e)[:100]}]"
+
+
+async def _google_raw_stream(client, prompt: str) -> AsyncIterator[str]:
+    response = client.generate_content_async(prompt, stream=True)
+    async for chunk in response:
+        if chunk and hasattr(chunk, "text") and chunk.text:
+            yield chunk.text
 
     async def chat(self, messages: List[Dict[str, str]]) -> GoogleResponse:
         """Chat with conversation history"""

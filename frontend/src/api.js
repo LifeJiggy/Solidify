@@ -88,8 +88,16 @@ export async function streamAudit(taskId, onChunk, onComplete, onError) {
           } else if (data.status === 'failed') {
             onError(data.error || 'Audit failed');
             return;
-          } else if (['connecting', 'analyzing', 'scanning', 'queued'].includes(data.status)) {
+          } else if (data.status === 'cancelled') {
+            onChunk('\n⏹ Audit cancelled by user\n');
+            if (typeof onComplete === 'function') {
+              onComplete({ score: 0, vulnerabilities: [], summary: 'Audit was cancelled' });
+            }
+            return;
+          } else if (['connecting', 'analyzing', 'scanning', 'queued', 'resumed'].includes(data.status)) {
             onChunk(data.status + '...\n');
+          } else if (data.status === 'paused') {
+            onChunk('\n⏸ Audit paused\n');
           }
         } catch {
           // skip malformed JSON

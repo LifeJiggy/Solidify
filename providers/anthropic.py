@@ -121,7 +121,7 @@ class AnthropicProvider:
             import httpx
 
             if not self.config.api_key or len(self.config.api_key) < 8:
-                yield '{"error": "Invalid API key"}'
+                yield "[Anthropic Error: Invalid API key]"
                 return
 
             headers = {
@@ -133,9 +133,11 @@ class AnthropicProvider:
             payload = {
                 "model": self.config.model,
                 "messages": [{"role": "user", "content": prompt[:80000]}],
-                "max_tokens": min(self.config.max_tokens, 4096) if hasattr(self.config, 'max_tokens') else 4096,
+                "max_tokens": min(getattr(self.config, 'max_tokens', 4096), 4096),
                 "stream": True,
             }
+
+            from .streaming import StreamingProcessor
 
             timeout = getattr(self.config, 'timeout', 60)
             async with httpx.AsyncClient(timeout=timeout) as client:
@@ -146,35 +148,19 @@ class AnthropicProvider:
                     headers=headers,
                 ) as resp:
                     if resp.status_code != 200:
-                        body = await resp.aread()
-                        yield f'{{"error": "HTTP {resp.status_code}: {body.decode()[:200]}"}}'
+                        yield f"[Anthropic Error: HTTP {resp.status_code}]"
                         return
 
-                    async for line in resp.aiter_lines():
-                        line = line.strip()
-                        if not line:
-                            continue
-                        if line.startswith("data: "):
-                            line = line[6:]
-                        if line == "[DONE]":
-                            break
-                        try:
-                            obj = json.loads(line)
-                            if obj.get("type") == "content_block_delta":
-                                delta = obj.get("delta", {})
-                                text = delta.get("text", "")
-                                if text:
-                                    yield text
-                            elif obj.get("type") == "message_stop":
-                                break
-                        except json.JSONDecodeError:
-                            pass
+                    processor = StreamingProcessor(provider="anthropic")
+                    async for content in processor.process_stream_simple(resp.aiter_lines()):
+                        yield content
+
         except httpx.TimeoutException:
             logger.error("Anthropic stream timed out")
-            yield '{"error": "Stream timed out"}'
+            yield "[Anthropic Error: Stream timed out]"
         except Exception as e:
             logger.error(f"Anthropic stream error: {e}")
-            yield f'{{"error": "{str(e)[:200]}"}}'
+            yield f"[Anthropic Error: {str(e)[:100]}]"
 
     def get_statistics(self) -> Dict[str, Any]:
         return {

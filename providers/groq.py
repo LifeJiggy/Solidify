@@ -237,7 +237,7 @@ class GroqProvider:
             import aiohttp
 
             if not self.config.api_key or len(self.config.api_key) < 8:
-                yield '{"error": "Invalid API key"}'
+                yield "[Groq Error: Invalid API key]"
                 return
 
             headers = {
@@ -253,6 +253,8 @@ class GroqProvider:
                 "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
             }
 
+            from .streaming import StreamingProcessor
+
             timeout = aiohttp.ClientTimeout(total=self.config.timeout)
             connector = aiohttp.TCPConnector(limit=10, force_close=True)
             async with aiohttp.ClientSession(connector=connector) as session:
@@ -263,34 +265,28 @@ class GroqProvider:
                     timeout=timeout,
                 ) as resp:
                     if resp.status != 200:
-                        error = await resp.text()
-                        yield f'{{"error": "HTTP {resp.status}: {error[:200]}"}}'
+                        yield f"[Groq Error: HTTP {resp.status}]"
                         return
 
-                    async for line in resp.content:
-                        line = line.decode("utf-8").strip()
-                        if not line:
-                            continue
-                        if line.startswith("data: "):
-                            raw = line[6:]
-                            if raw == "[DONE]":
-                                break
-                            try:
-                                obj = json.loads(raw)
-                                choices = obj.get("choices", [])
-                                if choices:
-                                    delta = choices[0].get("delta", {})
-                                    content = delta.get("content", "")
-                                    if content:
-                                        yield content
-                            except json.JSONDecodeError:
-                                yield raw
+                    processor = StreamingProcessor(provider="groq")
+                    async for content in processor.process_stream_simple(
+                        _aiohttp_line_stream(resp)
+                    ):
+                        yield content
+
         except asyncio.TimeoutError:
             logger.error("Groq stream timed out")
-            yield '{"error": "Stream timed out"}'
+            yield "[Groq Error: Stream timed out]"
         except Exception as e:
             logger.error(f"Groq stream error: {e}")
-            yield f'{{"error": "{str(e)[:200]}"}}'
+            yield f"[Groq Error: {str(e)[:100]}]"
+
+
+async def _aiohttp_line_stream(resp) -> AsyncIterator[str]:
+    async for raw in resp.content:
+        line = raw.decode("utf-8", errors="replace").strip()
+        if line:
+            yield line
 
     def get_statistics(self) -> Dict[str, Any]:
         return {

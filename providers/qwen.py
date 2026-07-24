@@ -7,7 +7,6 @@ Description: Qwen provider for smart contract analysis
 """
 
 import os
-import asyncio
 import logging
 from typing import Dict, Any, Optional, List, AsyncIterator
 from dataclasses import dataclass, field
@@ -317,7 +316,7 @@ class QwenProvider:
             import httpx
 
             if not self.config.api_key or len(self.config.api_key) < 8:
-                yield '{"error": "Invalid API key"}'
+                yield "[Qwen Error: Invalid API key]"
                 return
 
             headers = {
@@ -333,6 +332,8 @@ class QwenProvider:
                 "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
             }
 
+            from .streaming import StreamingProcessor
+
             async with httpx.AsyncClient(timeout=self.config.timeout) as client:
                 async with client.stream(
                     "POST",
@@ -341,32 +342,19 @@ class QwenProvider:
                     headers=headers,
                 ) as resp:
                     if resp.status_code != 200:
-                        body = await resp.aread()
-                        yield f'{{"error": "HTTP {resp.status_code}: {body.decode()[:200]}"}}'
+                        yield f"[Qwen Error: HTTP {resp.status_code}]"
                         return
 
-                    async for line in resp.aiter_lines():
-                        line = line.strip()
-                        if not line:
-                            continue
-                        try:
-                            obj = json.loads(line)
-                            if obj.get("finish_reason") == "stop":
-                                break
-                            choices = obj.get("choices", [])
-                            if choices:
-                                delta = choices[0].get("delta", {})
-                                content = delta.get("content", "")
-                                if content:
-                                    yield content
-                        except json.JSONDecodeError:
-                            pass
+                    processor = StreamingProcessor(provider="qwen")
+                    async for content in processor.process_stream_simple(resp.aiter_lines()):
+                        yield content
+
         except httpx.TimeoutException:
             logger.error("Qwen stream timed out")
-            yield '{"error": "Stream timed out"}'
+            yield "[Qwen Error: Stream timed out]"
         except Exception as e:
             logger.error(f"Qwen stream error: {e}")
-            yield f'{{"error": "{str(e)[:200]}"}}'
+            yield f"[Qwen Error: {str(e)[:100]}]"
 
     def get_statistics(self) -> Dict[str, Any]:
         return {
