@@ -1,8 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import CopyButton from './CopyButton';
 
-export default function AuditReport({ report }) {
+export default function AuditReport({ report, allExpanded }) {
   const [expanded, setExpanded] = useState({});
   const [showPatch, setShowPatch] = useState({});
+
+  useEffect(() => {
+    if (!report?.vulnerabilities) return;
+    const newState = {};
+    report.vulnerabilities.forEach((_, i) => { newState[i] = allExpanded; });
+    setExpanded(newState);
+  }, [allExpanded, report?.vulnerabilities?.length]);
 
   if (!report) return <div className="audit-report empty"><p>Run an audit to see vulnerabilities</p></div>;
 
@@ -54,7 +62,7 @@ export default function AuditReport({ report }) {
                 </div>
                 <span className="expand-icon">{expanded[i] ? '-' : '+'}</span>
               </div>
-              
+
               {expanded[i] && (
                 <div className="vuln-details">
                   <div className="detail-row">
@@ -65,10 +73,17 @@ export default function AuditReport({ report }) {
                     <label>Description</label>
                     <p>{v.description}</p>
                   </div>
+                  <div className="detail-row">
+                    <label>CVSS</label>
+                    <span className="cvss">{v.cvss || 'N/A'}</span>
+                  </div>
                   {v.recommendation && (
                     <div className="detail-row">
                       <label>Recommendation</label>
-                      <p className="recommendation">{v.recommendation}</p>
+                      <p className="recommendation">
+                        {v.recommendation}
+                        <CopyButton text={v.recommendation} />
+                      </p>
                     </div>
                   )}
                   {v.patch && (
@@ -77,7 +92,10 @@ export default function AuditReport({ report }) {
                         {showPatch[i] ? 'Hide Patch' : 'Show Patch'}
                       </button>
                       {showPatch[i] && (
-                        <pre className="patch-code">{v.patch}</pre>
+                        <div className="patch-wrapper">
+                          <CopyButton text={v.patch} />
+                          <pre className="patch-code">{v.patch}</pre>
+                        </div>
                       )}
                     </div>
                   )}

@@ -7,56 +7,75 @@ Description: NVIDIA provider with security-focused models for vulnerability dete
 """
 
 import os
-import asyncio
 import logging
 from typing import Dict, Any, Optional, List, AsyncIterator
 from dataclasses import dataclass, field
 from enum import Enum
-import aiohttp
 
 logger = logging.getLogger(__name__)
 
 
 class NvidiaModel(Enum):
+    # Nemotron-3 (2026 flagship)
+    NEMOTRON_3_ULTRA_550B = "nvidia/nemotron-3-ultra-550b-a55b"
+    NEMOTRON_3_SUPER_120B = "nvidia/nemotron-3-super-120b-a12b"
+    NEMOTRON_3_NANO_30B = "nvidia/nemotron-3-nano-30b-a3b"
+    NEMOTRON_3_NANO_OMNI_30B = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+    # Nemotron legacy
+    NEMOTRON_4_340B = "nvidia/nemotron-4-340b-instruct"
     NEMOTRON_70B = "nvidia/llama-3.1-nemotron-70b-instruct"
     NEMOTRON_51B = "nvidia/llama-3.1-nemotron-51b-instruct"
-    NEMOTRON_340B = "nvidia/nemotron-4-340b-instruct"
+    NEMOTRON_ULTRA_253B = "nvidia/llama-3.1-nemotron-ultra-253b-v1"
+    NEMOTRON_SUPER_49B_V15 = "nvidia/llama-3.3-nemotron-super-49b-v1.5"
+    NEMOTRON_SUPER_49B = "nvidia/llama-3.3-nemotron-super-49b-v1"
+    NEMOTRON_NANO_9B_V2 = "nvidia/nvidia-nemotron-nano-9b-v2"
+    NEMOTRON_NANO_12B_V2_VL = "nvidia/nemotron-nano-12b-v2-vl"
     NEMOTRON_NANO_8B = "nvidia/llama-3.1-nemotron-nano-8b-v1"
-    CODE_LLAMA_70B = "meta/codellama-70b"
-    STAR_CODER2_15B = "bigcode/starcoder2-15b"
-    STAR_CODER2_7B = "bigcode/starcoder2-7b"
-    DEEPSEEK_CODER_6_7B = "deepseek-ai/deepseek-coder-6.7b-instruct"
-    QWEN_CODER_32B = "qwen/qwen2.5-coder-32b-instruct"
-    QWEN_CODER_7B = "qwen/qwen2.5-coder-7b-instruct"
-    CLAUDE_3_OPUS = "anthropic/claude-3-opus-20140229"
-    LLAMA_3_1_405B = "meta/llama-3.1-405b-instruct"
+    NEMOTRON_MINI_4B = "nvidia/nemotron-mini-4b-instruct"
+    # Meta Llama
+    LLAMA_4_MAVERICK = "meta/llama-4-maverick-17b-128e-instruct"
+    LLAMA_3_3_70B = "meta/llama-3.3-70b-instruct"
     LLAMA_3_1_70B = "meta/llama-3.1-70b-instruct"
-    GOLG_4_31B = "google/gemma-4-31b-it"
-    NV_EMBED_CODE_7B = "nvidia/nv-embedcode-7b-v1"
-    NV_EMBED_V1 = "nvidia/nv-embed-v1"
-    QWEN3_CODER_480B = "qwen/qwen3-coder-480b-a35b-instruct"
-    DEEPSEEK_R1_Q32B = "deepseek-ai/deepseek-r1-distill-qwen-32b"
-    DEEPSEEK_R1_Q14B = "deepseek-ai/deepseek-r1-distill-qwen-14b"
-    DEEPSEEK_R1_Q7B = "deepseek-ai/deepseek-r1-distill-qwen-7b"
-    DEEPSEEK_R1_LLAMA8B = "deepseek-ai/deepseek-r1-distill-llama-8b"
-    PHI4_MULTIMODAL = "microsoft/phi-4-multimodal-instruct"
-    PHI4_MINI = "microsoft/phi-4-mini-instruct"
-    QWEN3_397B = "qwen/qwen3.5-397b-a17b"
-    QWEN3_122B = "qwen/qwen3.5-122b-a10b"
-    GLM_51 = "zhipuai/glm-5.1"
-    GLM_45 = "zhipuai/glm-4.5"
-    DEEPSEEK_V3 = "deepseek-ai/deepseek-v3.2"
-    MINIMAX_M2_5 = "minimaxai/minimax-m2.5"
-    NEVA_22B = "nvidia/neva-22b"
+    LLAMA_3_1_8B = "meta/llama-3.1-8b-instruct"
+    LLAMA_3_2_11B_VISION = "meta/llama-3.2-11b-vision-instruct"
+    LLAMA_3_2_3B = "meta/llama-3.2-3b-instruct"
+    LLAMA_3_2_1B = "meta/llama-3.2-1b-instruct"
+    # Google Gemma
+    GEMMA_4_31B = "google/gemma-4-31b-it"
+    GEMMA_3_12B = "google/gemma-3-12b-it"
+    GEMMA_3_4B = "google/gemma-3-4b-it"
+    GEMMA_3N_E2B = "google/gemma-3n-e2b-it"
+    # Qwen
+    QWEN3_NEXT_80B = "qwen/qwen3-next-80b-a3b-instruct"
+    QWEN3_5_122B = "qwen/qwen3.5-122b-a10b"
+    # Moonshot Kimi
+    KIMI_K2_6 = "moonshotai/kimi-k2.6"
+    # MiniMax
+    MINIMAX_M2_7 = "minimaxai/minimax-m2.7"
+    MINIMAX_M3 = "minimaxai/minimax-m3"
+    # Z-AI GLM
+    GLM_52 = "z-ai/glm-5.2"
+    # StepFun
+    STEP_37_FLASH = "stepfun-ai/step-3.7-flash"
+    # Mistral
     MISTRAL_LARGE_3 = "mistralai/mistral-large-3-675b-instruct-2512"
-    MISTRAL_LARGE_2 = "mistralai/mistral-large-2-instruct"
-    MIXTRAL_8X22B = "mistralai/mixtral-8x22b-instruct-v0.1"
+    MISTRAL_SMALL_4 = "mistralai/mistral-small-4-119b-2603"
+    MISTRAL_NEMOTRON = "mistralai/mistral-nemotron"
+    # DeepSeek
+    DEEPSEEK_V4_FLASH = "deepseek-ai/deepseek-v4-flash"
+    DEEPSEEK_V4_PRO = "deepseek-ai/deepseek-v4-pro"
+    DEEPSEEK_CODER_6_7B = "deepseek-ai/deepseek-coder-6.7b-instruct"
+    # OpenAI OSS
+    GPT_OSS_20B = "openai/gpt-oss-20b"
+    GPT_OSS_120B = "openai/gpt-oss-120b"
+    # 01.AI
+    YI_LARGE = "01-ai/yi-large"
 
 
 @dataclass
 class NvidiaConfig:
     api_key: str
-    model: str = "nvidia/llama-3.1-nemotron-70b-instruct"
+    model: str = "nvidia/nvidia-nemotron-nano-9b-v2"
     base_url: str = "https://integrate.api.nvidia.com/v1"
     temperature: float = 0.7
     max_tokens: int = 8192
@@ -75,502 +94,263 @@ class NvidiaResponse:
 
 
 MODELS = {
-    # ============================================
-    # AGENTIC SECURITY MODELS - Solidify
-    # ============================================
-    # ---- SAFETY GUARD MODELS ----
-    "nvidia/llama-3.1-nemotron-safety-guard-8b-v3": {
-        "name": "Nemotron Safety Guard 8B v3",
-        "category": "AGENTIC_SECURITY",
-        "context_window": 8192,
-        "use_cases": ["content-safety", "security-policy", "responsible-disclosure"],
+    # ---- NEMOTRON-3 FLAGSHIP (2026) ----
+    "nvidia/nemotron-3-ultra-550b-a55b": {
+        "name": "Nemotron-3 Ultra 550B",
+        "category": "SECURITY_AUDIT",
+        "context_window": 262144,
+        "use_cases": ["comprehensive-audit", "advanced-reasoning", "exploit-generation"],
     },
-    "nvidia/llama-3.1-nemoguard-8b-content-safety": {
-        "name": "NemoGuard Content Safety 8B",
-        "category": "AGENTIC_SECURITY",
-        "context_window": 8192,
-        "use_cases": ["content-safety", "policy-enforcement"],
+    "nvidia/nemotron-3-super-120b-a12b": {
+        "name": "Nemotron-3 Super 120B",
+        "category": "SECURITY_AUDIT",
+        "context_window": 131072,
+        "use_cases": ["security-audit", "code-analysis", "agentic"],
     },
-    "nvidia/llama-3.1-nemoguard-8b-topic-control": {
-        "name": "NemoGuard Topic Control 8B",
-        "category": "AGENTIC_SECURITY",
-        "context_window": 8192,
-        "use_cases": ["topic-control", "content-filtering"],
+    "nvidia/nemotron-3-nano-30b-a3b": {
+        "name": "Nemotron-3 Nano 30B",
+        "category": "HUNTING",
+        "context_window": 262144,
+        "use_cases": ["security-analysis", "code-review"],
     },
-    "nvidia/nemotron-content-safety-reasoning-4b": {
-        "name": "Nemotron Content Safety Reasoning 4B",
-        "category": "AGENTIC_SECURITY",
-        "context_window": 4096,
-        "use_cases": ["safety-reasoning", "content-evaluation"],
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning": {
+        "name": "Nemotron 3 Nano Omni 30B",
+        "category": "HUNTING",
+        "context_window": 256000,
+        "use_cases": ["reasoning", "security-analysis", "vision"],
     },
-    "meta/llama-guard-4-12b": {
-        "name": "Llama Guard 4 12B",
-        "category": "AGENTIC_SECURITY",
-        "context_window": 128000,
-        "use_cases": ["content-safety", "harm-detection"],
+    # ---- NEMOTRON LEGACY ----
+    "nvidia/nemotron-4-340b-instruct": {
+        "name": "Nemotron 4 340B",
+        "category": "SECURITY_AUDIT",
+        "context_window": 131072,
+        "use_cases": ["comprehensive-audit", "exploit-poc"],
     },
-    "google/shieldgemma-9b": {
-        "name": "ShieldGemma 9B",
-        "category": "AGENTIC_SECURITY",
-        "context_window": 8192,
-        "use_cases": ["safety-filtering", "harm-detection"],
-    },
-    "ibm/granite-guardian-3.0-8b": {
-        "name": "Granite Guardian 3.0 8B",
-        "category": "AGENTIC_SECURITY",
-        "context_window": 8192,
-        "use_cases": ["guardian-filtering", "safety"],
-    },
-    # ---- REASONING MODELS ----
-    "nvidia/cosmos-reason2-8b": {
-        "name": "Cosmos Reason 2 8B",
-        "category": "AGENTIC_REASONING",
-        "context_window": 8192,
-        "use_cases": ["security-reasoning", "threat-modeling"],
-    },
-    "deepseek-ai/deepseek-r1-distill-qwen-32b": {
-        "name": "DeepSeek R1 Distill Qwen 32B",
-        "category": "AGENTIC_REASONING",
-        "context_window": 32768,
-        "use_cases": ["advanced-reasoning", "vulnerability-analysis"],
-    },
-    "deepseek-ai/deepseek-r1-distill-qwen-14b": {
-        "name": "DeepSeek R1 Distill Qwen 14B",
-        "category": "AGENTIC_REASONING",
-        "context_window": 32768,
-        "use_cases": ["reasoning", "security-analysis"],
-    },
-    "deepseek-ai/deepseek-r1-distill-qwen-7b": {
-        "name": "DeepSeek R1 Distill Qwen 7B",
-        "category": "AGENTIC_REASONING",
-        "context_window": 32768,
-        "use_cases": ["reasoning", "code-analysis"],
-    },
-    "deepseek-ai/deepseek-r1-distill-llama-8b": {
-        "name": "DeepSeek R1 Distill Llama 8B",
-        "category": "AGENTIC_REASONING",
-        "context_window": 32768,
-        "use_cases": ["reasoning", "security-audit"],
-    },
-    "qwen/qwen3-next-80b-a3b-thinking": {
-        "name": "Qwen 3 Next 80B Thinking",
-        "category": "AGENTIC_REASONING",
-        "context_window": 32768,
-        "use_cases": ["advanced-thinking", "reasoning"],
-    },
-    # ---- CODE SECURITY MODELS ----
-    "meta/codellama-70b": {
-        "name": "CodeLlama 70B",
-        "category": "CODE_SECURITY",
-        "context_window": 100000,
-        "use_cases": ["code-review", "vulnerability-scanning", "security-patterns"],
-    },
-    "bigcode/starcoder2-15b": {
-        "name": "StarCoder2 15B",
-        "category": "CODE_SECURITY",
-        "context_window": 16384,
-        "use_cases": ["code-analysis", "vulnerability-detection"],
-    },
-    "bigcode/starcoder2-7b": {
-        "name": "StarCoder2 7B",
-        "category": "CODE_SECURITY",
-        "context_window": 16384,
-        "use_cases": ["code-analysis", "security-scanning"],
-    },
-    "mistralai/codestral-22b-instruct-v0.1": {
-        "name": "Codestral 22B",
-        "category": "CODE_SECURITY",
-        "context_window": 32768,
-        "use_cases": ["code-generation", "security-analysis"],
-    },
-    "mistralai/mamba-codestral-7b-v0.1": {
-        "name": "Mamba Codestral 7B",
-        "category": "CODE_SECURITY",
-        "context_window": 32768,
-        "use_cases": ["code-completion", "security-review"],
-    },
-    "deepseek-ai/deepseek-coder-6.7b-instruct": {
-        "name": "DeepSeek Coder 6.7B",
-        "category": "CODE_SECURITY",
-        "context_window": 16384,
-        "use_cases": ["smart-contract-audit", "solidity-analysis"],
-    },
-    "google/codegemma-7b": {
-        "name": "CodeGemma 7B",
-        "category": "CODE_SECURITY",
-        "context_window": 8192,
-        "use_cases": ["code-analysis", "vulnerability-detection"],
-    },
-    "google/codegemma-1.1-7b": {
-        "name": "CodeGemma 1.1 7B",
-        "category": "CODE_SECURITY",
-        "context_window": 8192,
-        "use_cases": ["code-review", "security-analysis"],
-    },
-    "qwen/qwen2.5-coder-32b-instruct": {
-        "name": "Qwen 2.5 Coder 32B",
-        "category": "CODE_SECURITY",
-        "context_window": 32768,
-        "use_cases": ["code-review", "vulnerability-scanning"],
-    },
-    "qwen/qwen2.5-coder-7b-instruct": {
-        "name": "Qwen 2.5 Coder 7B",
-        "category": "CODE_SECURITY",
-        "context_window": 32768,
-        "use_cases": ["code-analysis", "security-scanning"],
-    },
-    "qwen/qwen3-coder-480b-a35b-instruct": {
-        "name": "Qwen 3 Coder 480B",
-        "category": "CODE_SECURITY",
-        "context_window": 32768,
-        "use_cases": ["advanced-code-analysis", "vulnerability-detection"],
-    },
-    "ibm/granite-34b-code-instruct": {
-        "name": "Granite 34B Code",
-        "category": "CODE_SECURITY",
-        "context_window": 16384,
-        "use_cases": ["code-understanding", "security-analysis"],
-    },
-    "ibm/granite-8b-code-instruct": {
-        "name": "Granite 8B Code",
-        "category": "CODE_SECURITY",
-        "context_window": 16384,
-        "use_cases": ["code-analysis", "vulnerability-scanning"],
-    },
-    # ---- EMBEDDING MODELS ----
-    "nvidia/nv-embedcode-7b-v1": {
-        "name": "NV EmbedCode 7B",
-        "category": "EMBEDDING",
-        "context_window": 8192,
-        "use_cases": ["code-embedding", "vulnerability-search"],
-    },
-    "nvidia/nv-embed-v1": {
-        "name": "NV Embed v1",
-        "category": "EMBEDDING",
-        "context_window": 8192,
-        "use_cases": ["embedding", "semantic-search"],
-    },
-    "nvidia/llama-nemotron-embed-1b-v2": {
-        "name": "Nemotron Embed 1B v2",
-        "category": "EMBEDDING",
-        "context_window": 8192,
-        "use_cases": ["embedding", "retrieval"],
-    },
-    "snowflake/arctic-embed-l": {
-        "name": "Arctic Embed L",
-        "category": "EMBEDDING",
-        "context_window": 8192,
-        "use_cases": ["embedding", "search"],
-    },
-    # ---- REWARD MODELS ----
-    "nvidia/llama-3.1-nemotron-70b-reward": {
-        "name": "Nemotron 70B Reward",
-        "category": "REWARD",
-        "context_window": 8192,
-        "use_cases": ["severity-scoring", "action-evaluation"],
-    },
-    "nvidia/nemotron-4-340b-reward": {
-        "name": "Nemotron 340B Reward",
-        "category": "REWARD",
-        "context_window": 8192,
-        "use_cases": ["security-evaluation", "reward-scoring"],
-    },
-    # ============================================
-    # NEMOTRON MODELS - NVIDIA Flagship
-    # ============================================
     "nvidia/llama-3.1-nemotron-70b-instruct": {
         "name": "Nemotron 70B Instruct",
         "category": "SECURITY_AUDIT",
-        "context_window": 128000,
-        "use_cases": [
-            "smart-contract-audit",
-            "vulnerability-analysis",
-            "exploit-generation",
-        ],
+        "context_window": 131072,
+        "use_cases": ["smart-contract-audit", "vulnerability-analysis"],
     },
     "nvidia/llama-3.1-nemotron-51b-instruct": {
         "name": "Nemotron 51B Instruct",
         "category": "SECURITY_AUDIT",
-        "context_window": 128000,
+        "context_window": 131072,
         "use_cases": ["security-analysis", "vulnerability-detection"],
-    },
-    "nvidia/nemotron-4-340b-instruct": {
-        "name": "Nemotron 4 340B Instruct",
-        "category": "SECURITY_AUDIT",
-        "context_window": 128000,
-        "use_cases": ["comprehensive-audit", "exploit-poc", "security-reasoning"],
     },
     "nvidia/llama-3.1-nemotron-ultra-253b-v1": {
         "name": "Nemotron Ultra 253B",
         "category": "SECURITY_AUDIT",
-        "context_window": 128000,
+        "context_window": 131072,
         "use_cases": ["advanced-audit", "complex-analysis"],
     },
-    "nvidia/llama-3.3-nemotron-super-49b-v1": {
-        "name": "Nemotron Super 49B v1",
-        "category": "SECURITY_AUDIT",
-        "context_window": 128000,
+    "nvidia/llama-3.3-nemotron-super-49b-v1.5": {
+        "name": "Nemotron Super 49B V1.5",
+        "category": "HUNTING",
+        "context_window": 131072,
         "use_cases": ["security-audit", "reasoning"],
     },
-    "nvidia/nemotron-mini-4b-instruct": {
-        "name": "Nemotron Mini 4B",
-        "category": "SECURITY_AUDIT",
-        "context_window": 32768,
-        "use_cases": ["quick-analysis", "lightweight-audit"],
+    "nvidia/llama-3.3-nemotron-super-49b-v1": {
+        "name": "Nemotron Super 49B V1",
+        "category": "HUNTING",
+        "context_window": 131072,
+        "use_cases": ["security-audit", "reasoning"],
+    },
+    "nvidia/nvidia-nemotron-nano-9b-v2": {
+        "name": "Nemotron Nano 9B V2",
+        "category": "HUNTING",
+        "context_window": 128000,
+        "use_cases": ["fast-analysis", "quick-scan"],
+    },
+    "nvidia/nemotron-nano-12b-v2-vl": {
+        "name": "Nemotron Nano 12B V2 VL",
+        "category": "HUNTING",
+        "context_window": 128000,
+        "use_cases": ["vision-analysis", "code-review"],
     },
     "nvidia/llama-3.1-nemotron-nano-8b-v1": {
         "name": "Nemotron Nano 8B",
-        "category": "SECURITY_AUDIT",
-        "context_window": 32768,
+        "category": "HUNTING",
+        "context_window": 131072,
         "use_cases": ["fast-scanning", "efficient-analysis"],
     },
-    # ============================================
-    # META LLAMA MODELS
-    # ============================================
-    "meta/llama-3.1-405b-instruct": {
-        "name": "Llama 3.1 405B",
+    "nvidia/nemotron-mini-4b-instruct": {
+        "name": "Nemotron Mini 4B",
         "category": "HUNTING",
-        "context_window": 128000,
-        "use_cases": ["comprehensive-audit", "advanced-reasoning"],
+        "context_window": 16384,
+        "use_cases": ["quick-analysis", "lightweight-audit"],
+    },
+    # ---- META LLAMA ----
+    "meta/llama-4-maverick-17b-128e-instruct": {
+        "name": "Llama 4 Maverick 17B",
+        "category": "HUNTING",
+        "context_window": 131072,
+        "use_cases": ["advanced-reasoning", "security-audit", "vision"],
+    },
+    "meta/llama-3.3-70b-instruct": {
+        "name": "Llama 3.3 70B",
+        "category": "HUNTING",
+        "context_window": 131072,
+        "use_cases": ["security-analysis", "audit"],
     },
     "meta/llama-3.1-70b-instruct": {
         "name": "Llama 3.1 70B",
         "category": "HUNTING",
-        "context_window": 128000,
+        "context_window": 131072,
         "use_cases": ["security-audit", "vulnerability-analysis"],
     },
     "meta/llama-3.1-8b-instruct": {
         "name": "Llama 3.1 8B",
         "category": "HUNTING",
-        "context_window": 128000,
+        "context_window": 131072,
         "use_cases": ["fast-analysis", "quick-scan"],
-    },
-    "meta/llama-3.2-90b-vision-instruct": {
-        "name": "Llama 3.2 90B Vision",
-        "category": "HUNTING",
-        "context_window": 128000,
-        "use_cases": ["visual-analysis", "security-review"],
     },
     "meta/llama-3.2-11b-vision-instruct": {
         "name": "Llama 3.2 11B Vision",
         "category": "HUNTING",
-        "context_window": 128000,
+        "context_window": 131072,
         "use_cases": ["vision-analysis", "code-review"],
     },
-    "meta/llama-3.3-70b-instruct": {
-        "name": "Llama 3.3 70B",
+    "meta/llama-3.2-3b-instruct": {
+        "name": "Llama 3.2 3B",
         "category": "HUNTING",
-        "context_window": 128000,
-        "use_cases": ["security-analysis", "audit"],
+        "context_window": 131072,
+        "use_cases": ["fast-scan", "lightweight"],
     },
-    "meta/llama-4-maverick-17b-128e-instruct": {
-        "name": "Llama 4 Maverick 17B",
+    "meta/llama-3.2-1b-instruct": {
+        "name": "Llama 3.2 1B",
         "category": "HUNTING",
-        "context_window": 128000,
-        "use_cases": ["advanced-reasoning", "security-audit"],
+        "context_window": 131072,
+        "use_cases": ["ultra-fast", "edge"],
     },
-    # ============================================
-    # GOOGLE GEMMA MODELS
-    # ============================================
+    # ---- GOOGLE GEMMA ----
     "google/gemma-4-31b-it": {
         "name": "Gemma 4 31B",
         "category": "HUNTING",
-        "context_window": 32768,
-        "use_cases": ["security-analysis", "code-review"],
+        "context_window": 131072,
+        "use_cases": ["security-analysis", "code-review", "reasoning"],
     },
-    "google/gemma-4-12b-it": {
-        "name": "Gemma 4 12B",
+    "google/gemma-3-12b-it": {
+        "name": "Gemma 3 12B",
         "category": "HUNTING",
-        "context_window": 32768,
+        "context_window": 131072,
         "use_cases": ["analysis", "scanning"],
     },
-    "google/gemma-3-27b-it": {
-        "name": "Gemma 3 27B",
+    "google/gemma-3-4b-it": {
+        "name": "Gemma 3 4B",
         "category": "HUNTING",
         "context_window": 32768,
-        "use_cases": ["security-audit", "vulnerability-detection"],
+        "use_cases": ["fast-scan", "lightweight"],
     },
-    "google/gemma-2-27b-it": {
-        "name": "Gemma 2 27B",
+    "google/gemma-3n-e2b-it": {
+        "name": "Gemma 3N E2B",
         "category": "HUNTING",
-        "context_window": 8192,
-        "use_cases": ["code-analysis", "security-review"],
+        "context_window": 32768,
+        "use_cases": ["edge", "efficient"],
     },
-    "google/gemma-2-9b-it": {
-        "name": "Gemma 2 9B",
+    # ---- QWEN ----
+    "qwen/qwen3-next-80b-a3b-instruct": {
+        "name": "Qwen3 Next 80B",
         "category": "HUNTING",
-        "context_window": 8192,
-        "use_cases": ["fast-analysis", "quick-scan"],
+        "context_window": 131072,
+        "use_cases": ["advanced-reasoning", "security-audit"],
     },
-    # ============================================
-    # MISTRAL MODELS
-    # ============================================
+    "qwen/qwen3.5-122b-a10b": {
+        "name": "Qwen3.5 122B",
+        "category": "HUNTING",
+        "context_window": 131072,
+        "use_cases": ["security-analysis", "vulnerability-detection"],
+    },
+    # ---- MOONSHOT KIMI ----
+    "moonshotai/kimi-k2.6": {
+        "name": "Kimi K2.6",
+        "category": "HUNTING",
+        "context_window": 262144,
+        "use_cases": ["reasoning", "security-analysis"],
+    },
+    # ---- MINIMAX ----
+    "minimaxai/minimax-m2.7": {
+        "name": "MiniMax M2.7",
+        "category": "HUNTING",
+        "context_window": 200000,
+        "use_cases": ["security-audit", "code-analysis", "reasoning"],
+    },
+    "minimaxai/minimax-m3": {
+        "name": "MiniMax M3",
+        "category": "HUNTING",
+        "context_window": 1048576,
+        "use_cases": ["comprehensive-audit", "advanced-reasoning"],
+    },
+    # ---- Z-AI GLM ----
+    "z-ai/glm-5.2": {
+        "name": "GLM-5.2",
+        "category": "HUNTING",
+        "context_window": 202752,
+        "use_cases": ["security-audit", "reasoning"],
+    },
+    # ---- STEPFUN ----
+    "stepfun-ai/step-3.7-flash": {
+        "name": "StepFun 3.7 Flash",
+        "category": "HUNTING",
+        "context_window": 131072,
+        "use_cases": ["fast-analysis", "security-scan"],
+    },
+    # ---- MISTRAL ----
     "mistralai/mistral-large-3-675b-instruct-2512": {
         "name": "Mistral Large 3 675B",
         "category": "HUNTING",
-        "context_window": 128000,
+        "context_window": 131072,
         "use_cases": ["comprehensive-audit", "advanced-analysis"],
-    },
-    "mistralai/mistral-large-2-instruct": {
-        "name": "Mistral Large 2",
-        "category": "HUNTING",
-        "context_window": 128000,
-        "use_cases": ["security-analysis", "reasoning"],
     },
     "mistralai/mistral-small-4-119b-2603": {
         "name": "Mistral Small 4 119B",
         "category": "HUNTING",
-        "context_window": 32768,
+        "context_window": 131072,
         "use_cases": ["efficient-analysis", "security-scan"],
-    },
-    "mistralai/mixtral-8x22b-instruct-v0.1": {
-        "name": "Mixtral 8x22B",
-        "category": "HUNTING",
-        "context_window": 65536,
-        "use_cases": ["code-analysis", "vulnerability-detection"],
-    },
-    "mistralai/mixtral-8x7b-instruct-v0.1": {
-        "name": "Mixtral 8x7B",
-        "category": "HUNTING",
-        "context_window": 32768,
-        "use_cases": ["fast-scanning", "analysis"],
     },
     "mistralai/mistral-nemotron": {
         "name": "Mistral Nemotron",
         "category": "HUNTING",
-        "context_window": 128000,
+        "context_window": 131072,
         "use_cases": ["security-audit", "reasoning"],
     },
-    # ============================================
-    # MICROSOFT PHI MODELS
-    # ============================================
-    "microsoft/phi-4-multimodal-instruct": {
-        "name": "Phi 4 Multimodal",
+    # ---- DEEPSEEK ----
+    "deepseek-ai/deepseek-v4-flash": {
+        "name": "DeepSeek V4 Flash",
         "category": "HUNTING",
+        "context_window": 131072,
+        "use_cases": ["fast-analysis", "security-scan"],
+    },
+    "deepseek-ai/deepseek-v4-pro": {
+        "name": "DeepSeek V4 Pro",
+        "category": "HUNTING",
+        "context_window": 131072,
+        "use_cases": ["comprehensive-audit", "advanced-reasoning"],
+    },
+    "deepseek-ai/deepseek-coder-6.7b-instruct": {
+        "name": "DeepSeek Coder 6.7B",
+        "category": "CODE_SECURITY",
         "context_window": 32768,
-        "use_cases": ["multimodal-analysis", "security-review"],
+        "use_cases": ["smart-contract-audit", "solidity-analysis"],
     },
-    "microsoft/phi-4-mini-instruct": {
-        "name": "Phi 4 Mini",
+    # ---- OPENAI OSS ----
+    "openai/gpt-oss-20b": {
+        "name": "GPT OSS 20B",
         "category": "HUNTING",
-        "context_window": 32768,
-        "use_cases": ["efficient-analysis", "fast-scan"],
+        "context_window": 131072,
+        "use_cases": ["code-analysis", "security-review"],
     },
-    # ============================================
-    # QWEN MODELS
-    # ============================================
-    "qwen/qwen3.5-397b-a17b": {
-        "name": "Qwen 3.5 397B",
+    "openai/gpt-oss-120b": {
+        "name": "GPT OSS 120B",
         "category": "HUNTING",
-        "context_window": 32768,
-        "use_cases": ["advanced-reasoning", "comprehensive-audit"],
+        "context_window": 131072,
+        "use_cases": ["comprehensive-audit", "advanced-analysis"],
     },
-    "qwen/qwen3.5-122b-a10b": {
-        "name": "Qwen 3.5 122B",
+    # ---- 01.AI ----
+    "01-ai/yi-large": {
+        "name": "Yi Large",
         "category": "HUNTING",
-        "context_window": 32768,
-        "use_cases": ["security-analysis", "vulnerability-detection"],
-    },
-    "qwen/qwen3.5-32b-a10b": {
-        "name": "Qwen 3.5 32B A10B",
-        "category": "HUNTING",
-        "context_window": 32768,
-        "use_cases": ["code-analysis", "audit"],
-    },
-    "qwen/qwen2.5-32b-instruct": {
-        "name": "Qwen 2.5 32B",
-        "category": "HUNTING",
-        "context_window": 32768,
-        "use_cases": ["security-review", "scanning"],
-    },
-    "qwen/qwen2.5-7b-instruct": {
-        "name": "Qwen 2.5 7B",
-        "category": "HUNTING",
-        "context_window": 32768,
-        "use_cases": ["fast-analysis", "quick-scan"],
-    },
-    # ============================================
-    # ZHIPU GLM MODELS
-    # ============================================
-    "zhipuai/glm-5.1": {
-        "name": "GLM 5.1",
-        "category": "HUNTING",
-        "context_window": 128000,
-        "use_cases": ["security-audit", "reasoning"],
-    },
-    "zhipuai/glm-5.1-flash": {
-        "name": "GLM 5.1 Flash",
-        "category": "HUNTING",
-        "context_window": 128000,
-        "use_cases": ["fast-analysis", "efficient-scan"],
-    },
-    "zhipuai/glm-4.5": {
-        "name": "GLM 4.5",
-        "category": "HUNTING",
-        "context_window": 128000,
-        "use_cases": ["security-analysis", "vulnerability-detection"],
-    },
-    "zhipuai/glm-4.5-flash": {
-        "name": "GLM 4.5 Flash",
-        "category": "HUNTING",
-        "context_window": 128000,
-        "use_cases": ["quick-audit", "efficient-review"],
-    },
-    # ============================================
-    # DEEPSEEK MODELS
-    # ============================================
-    "deepseek-ai/deepseek-v3.2": {
-        "name": "DeepSeek V3.2",
-        "category": "HUNTING",
-        "context_window": 64000,
-        "use_cases": ["advanced-reasoning", "security-audit"],
-    },
-    "deepseek-ai/deepseek-v3.1": {
-        "name": "DeepSeek V3.1",
-        "category": "HUNTING",
-        "context_window": 64000,
-        "use_cases": ["comprehensive-analysis", "vulnerability-detection"],
-    },
-    # ============================================
-    # IBM GRANITE MODELS
-    # ============================================
-    "ibm/granite-3.3-8b-instruct": {
-        "name": "Granite 3.3 8B",
-        "category": "HUNTING",
-        "context_window": 32768,
-        "use_cases": ["efficient-analysis", "security-scan"],
-    },
-    "ibm/granite-3.0-8b-instruct": {
-        "name": "Granite 3.0 8B",
-        "category": "HUNTING",
-        "context_window": 32768,
-        "use_cases": ["code-analysis", "review"],
-    },
-    # ============================================
-    # OTHER MODELS
-    # ============================================
-    "minimaxai/minimax-m2.5": {
-        "name": "MiniMax M2.5",
-        "category": "HUNTING",
-        "context_window": 128000,
-        "use_cases": ["security-audit", "smart-contract-analysis"],
-    },
-    "moonshotai/kimi-k2.5": {
-        "name": "Kimi K2.5",
-        "category": "HUNTING",
-        "context_window": 128000,
-        "use_cases": ["reasoning", "analysis"],
-    },
-    "nvidia/neva-22b": {
-        "name": "Neva 22B Vision",
-        "category": "SPECIALIZED",
-        "context_window": 4096,
-        "use_cases": ["visual-analysis", "diagram-review"],
-    },
-    "databricks/dbrx-instruct": {
-        "name": "DBRX Instruct",
-        "category": "HUNTING",
-        "context_window": 32768,
+        "context_window": 131072,
         "use_cases": ["security-analysis", "code-review"],
     },
 }
@@ -751,7 +531,7 @@ class NvidiaProvider:
 
 def create_nvidia_provider(
     api_key: Optional[str] = None,
-    model: str = "nvidia/llama-3.1-nemotron-70b-instruct",
+    model: str = "nvidia/nvidia-nemotron-nano-9b-v2",
     **kwargs,
 ) -> NvidiaProvider:
     """Factory function to create NVIDIA provider"""

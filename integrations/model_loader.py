@@ -46,80 +46,80 @@ class ModelConfig:
 
 
 MODEL_CONFIGS = {
-    "gemini-2.0-flash": ModelConfig(
-        name="gemini-2.0-flash",
+    "gemini-2.5-flash": ModelConfig(
+        name="gemini-2.5-flash",
         provider=ModelProvider.GEMINI,
         size=ModelSize.SMALL,
-        context_length=1000000,
+        context_length=1048576,
         supports_streaming=True,
         description="Fast Gemini model"
     ),
-    "gemini-2.0-pro": ModelConfig(
-        name="gemini-2.0-pro",
+    "gemini-2.5-pro": ModelConfig(
+        name="gemini-2.5-pro",
         provider=ModelProvider.GEMINI,
         size=ModelSize.LARGE,
-        context_length=1000000,
+        context_length=1048576,
         supports_streaming=True,
         description="Pro Gemini model"
     ),
-    "gpt-4o-mini": ModelConfig(
-        name="gpt-4o-mini",
+    "gpt-5-mini": ModelConfig(
+        name="gpt-5-mini",
         provider=ModelProvider.OPENAI,
         size=ModelSize.SMALL,
-        context_length=128000,
+        context_length=400000,
         supports_streaming=True,
         supports_functions=True,
-        description="Mini GPT-4"
+        description="GPT-5 Mini"
     ),
-    "gpt-4o": ModelConfig(
-        name="gpt-4o",
+    "gpt-5": ModelConfig(
+        name="gpt-5",
         provider=ModelProvider.OPENAI,
         size=ModelSize.LARGE,
-        context_length=128000,
+        context_length=400000,
         supports_streaming=True,
         supports_functions=True,
-        description="GPT-4"
+        description="GPT-5"
     ),
-    "claude-3-5-sonnet": ModelConfig(
-        name="claude-3-5-sonnet-20241022",
+    "claude-sonnet-4-6": ModelConfig(
+        name="claude-sonnet-4-6",
         provider=ModelProvider.ANTHROPIC,
         size=ModelSize.MEDIUM,
-        context_length=200000,
+        context_length=1000000,
         supports_streaming=True,
-        description="Claude Sonnet"
+        description="Claude Sonnet 4.6"
     ),
-    "llama3.2": ModelConfig(
-        name="llama3.2",
+    "llama3.3": ModelConfig(
+        name="llama3.3",
         provider=ModelProvider.OLLAMA,
         size=ModelSize.MEDIUM,
-        context_length=128000,
+        context_length=131072,
         supports_streaming=True,
-        description="Llama 3.2"
+        description="Llama 3.3"
     ),
-    "llama3.1": ModelConfig(
-        name="llama3.1",
+    "llama4-maverick": ModelConfig(
+        name="llama4-maverick",
         provider=ModelProvider.OLLAMA,
         size=ModelSize.LARGE,
-        context_length=128000,
+        context_length=131072,
         supports_streaming=True,
-        description="Llama 3.1"
+        description="Llama 4 Maverick"
     ),
-    "qwen2.5": ModelConfig(
-        name="qwen2.5",
+    "qwen3": ModelConfig(
+        name="qwen3",
         provider=ModelProvider.QWEN,
         size=ModelSize.MEDIUM,
         context_length=131072,
         supports_streaming=True,
-        description="Qwen 2.5"
+        description="Qwen 3"
     ),
-    "mixtral-8x7b": ModelConfig(
-        name="mixtral-8x7b",
+    "llama-3.3-70b-versatile": ModelConfig(
+        name="llama-3.3-70b-versatile",
         provider=ModelProvider.GROQ,
         size=ModelSize.MEDIUM,
-        context_length=32000,
+        context_length=131072,
         supports_streaming=True,
-        description="Mixtral"
-    )
+        description="Llama 3.3 70B"
+    ),
 }
 
 
@@ -198,15 +198,15 @@ class ModelSelector:
         requirements: Optional[Dict[str, Any]] = None
     ) -> Optional[str]:
         task_models = {
-            "audit": "gemini-2.0-flash",
-            "explain": "gpt-4o-mini",
-            "fast": "gpt-4o-mini",
-            "deep": "gpt-4o",
-            "code": "claude-3-5-sonnet",
-            "local": "llama3.2"
+            "audit": "gemini-2.5-flash",
+            "explain": "gpt-5-mini",
+            "fast": "gpt-5-mini",
+            "deep": "gpt-5",
+            "code": "claude-sonnet-4-6",
+            "local": "llama3.3"
         }
         
-        model = task_models.get(task, "gemini-2.0-flash")
+        model = task_models.get(task, "gemini-2.5-flash")
         
         if requirements:
             if requirements.get("streaming"):
@@ -223,7 +223,7 @@ class ModelSelector:
         models = self.registry.list_by_provider(provider)
         if models:
             return models[0].name
-        return "gemini-2.0-flash"
+        return "gemini-2.5-flash"
 
 
 class ModelManager:

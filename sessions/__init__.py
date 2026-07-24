@@ -746,15 +746,15 @@ class SessionManager:
 
     def _get_default_model(self, provider: Provider) -> str:
         models = {
-            Provider.GEMINI: "gemini-2.0-flash-exp",
-            Provider.ANTHROPIC: "claude-3-5-sonnet-20241022",
-            Provider.OPENAI: "gpt-4o-mini",
-            Provider.OLLAMA: "llama3.1",
-            Provider.GROQ: "llama-3.1-70b-versatile",
-            Provider.QWEN: "qwen-turbo",
-            Provider.VERTEX: "gemini-2.0-flash-exp",
+            Provider.GEMINI: "gemini-2.5-flash",
+            Provider.ANTHROPIC: "claude-sonnet-4-6",
+            Provider.OPENAI: "gpt-5-mini",
+            Provider.OLLAMA: "llama3.3",
+            Provider.GROQ: "llama-3.3-70b-versatile",
+            Provider.QWEN: "qwen-plus",
+            Provider.VERTEX: "gemini-2.5-flash",
         }
-        return models.get(provider, "gemini-2.0-flash-exp")
+        return models.get(provider, "gemini-2.5-flash")
 
     def on(self, event: str, handler: Callable) -> None:
         self._event_handler.on(event, handler)

@@ -56,7 +56,7 @@ class ChatCompletion:
 
 @dataclass
 class GenerationConfig:
-    model: str = "gemini-2.0-flash"
+    model: str = "gemini-2.5-flash"
     temperature: float = 0.7
     max_tokens: int = 8192
     top_p: float = 0.95
@@ -82,8 +82,8 @@ class BaseLLMClient:
     def __init__(self, api_key: Optional[str] = None, config: Optional[Dict[str, Any]] = None):
         self.api_key = api_key
         self.config = config or {}
-        self.default_model = "gemini-2.0-flash"
-    
+        self.default_model = "gemini-2.5-flash"
+
     async def generate(self, prompt: str, config: Optional[GenerationConfig] = None) -> LLMResponse:
         raise NotImplementedError
     
@@ -99,7 +99,7 @@ class GeminiClient(BaseLLMClient):
     
     def __init__(self, api_key: Optional[str] = None, config: Optional[Dict[str, Any]] = None):
         super().__init__(api_key, config)
-        self.default_model = "gemini-2.0-flash"
+        self.default_model = "gemini-2.5-flash"
         self._client = None
     
     async def generate(self, prompt: str, config: Optional[GenerationConfig] = None) -> LLMResponse:
@@ -131,7 +131,7 @@ class OpenAIClient(BaseLLMClient):
     
     def __init__(self, api_key: Optional[str] = None, config: Optional[Dict[str, Any]] = None):
         super().__init__(api_key, config)
-        self.default_model = "gpt-4o-mini"
+        self.default_model = "gpt-5-mini"
         self.base_url = self.config.get("base_url", "https://api.openai.com/v1")
     
     async def generate(self, prompt: str, config: Optional[GenerationConfig] = None) -> LLMResponse:
@@ -178,7 +178,7 @@ class AnthropicClient(BaseLLMClient):
     
     def __init__(self, api_key: Optional[str] = None, config: Optional[Dict[str, Any]] = None):
         super().__init__(api_key, config)
-        self.default_model = "claude-3-5-sonnet-20241022"
+        self.default_model = "claude-sonnet-4-6"
         self.base_url = self.config.get("base_url", "https://api.anthropic.com")
     
     async def generate(self, prompt: str, config: Optional[GenerationConfig] = None) -> LLMResponse:

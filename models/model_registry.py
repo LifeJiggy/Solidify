@@ -119,11 +119,11 @@ def load_all_models() -> None:
         logger.warning(f"Could not load GLM models: {e}")
 
     # Add default models
-    AVAILABLE_MODELS["gemini-2.0-flash"] = SolidifyModel(
-        name="Gemini 2.0 Flash",
-        model_id="gemini-2.0-flash",
+    AVAILABLE_MODELS["gemini-2.5-flash"] = SolidifyModel(
+        name="Gemini 2.5 Flash",
+        model_id="gemini-2.5-flash",
         provider="google",
-        context_window=1000000,
+        context_window=1048576,
         max_tokens=8192,
         tools=["code_analysis", "vulnerability_scan", "exploit_gen", "fix_gen"],
         security_focus=SecurityFocus(
@@ -210,7 +210,7 @@ def select_best_model(
         candidates.sort(key=lambda x: x[1], reverse=True)
         return candidates[0][0]
 
-    return "gemini-2.0-flash"
+    return "gemini-2.5-flash"
 
 
 __all__ = [

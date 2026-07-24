@@ -1,25 +1,67 @@
 const API_BASE = 'http://localhost:8000/api';
+const DEFAULT_TIMEOUT = 30000;
+const STREAM_TIMEOUT = 120000;
+
+class ApiError extends Error {
+  constructor(message, status, data) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
+  }
+}
+
+async function fetchWithTimeout(url, options = {}, timeout = DEFAULT_TIMEOUT, retries = 1) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timer);
+      if (!res.ok) {
+        let data;
+        try { data = await res.json(); } catch { data = null; }
+        throw new ApiError(data?.detail || `HTTP ${res.status}`, res.status, data);
+      }
+      return res;
+    } catch (e) {
+      clearTimeout(timer);
+      if (e.name === 'AbortError') throw new ApiError('Request timed out', 408);
+      if (attempt < retries && e.name === 'ApiError' && e.status >= 500) {
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        continue;
+      }
+      if (e instanceof ApiError) throw e;
+      throw new ApiError(e.message || 'Network error', 0);
+    }
+  }
+}
 
 export async function startAudit(codeOrAddress, chain, options = {}) {
   const body = { chain, ...options };
-  if (codeOrAddress && codeOrAddress.startsWith('0x') && codeOrAddress.length === 42 && !body.address) {
+  if (codeOrAddress && /^0x[a-fA-F0-9]{40}$/.test(codeOrAddress) && !body.address) {
     body.address = codeOrAddress;
   } else if (!body.code && !body.address) {
     body.code = codeOrAddress;
   }
-  const res = await fetch(`${API_BASE}/audit/start`, {
+  const res = await fetchWithTimeout(`${API_BASE}/audit/start`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  });
+  }, 15000);
   return res.json();
 }
 
 export async function streamAudit(taskId, onChunk, onComplete, onError) {
   try {
-    const response = await fetch(`${API_BASE}/audit/stream/${taskId}`);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), STREAM_TIMEOUT);
+    const response = await fetch(`${API_BASE}/audit/stream/${taskId}`, { signal: controller.signal });
+    clearTimeout(timer);
+
     if (!response.ok) {
-      throw new Error('Stream failed: ' + response.statusText);
+      onError(`Stream failed: HTTP ${response.status}`);
+      return;
     }
 
     const reader = response.body.getReader();
@@ -35,44 +77,45 @@ export async function streamAudit(taskId, onChunk, onComplete, onError) {
       buffer = lines.pop() || '';
 
       for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.status === 'streaming' && data.chunk) {
-              onChunk(data.chunk);
-            } else if (data.status === 'completed' && data.result) {
-              onComplete(data.result);
-              return;
-            } else if (data.status === 'failed') {
-              onError(data.error || 'Audit failed');
-              return;
-            } else if (['connecting', 'analyzing', 'scanning', 'queued'].includes(data.status)) {
-              onChunk(data.status + '...\n');
-            }
-          } catch (e) {
-            // skip invalid JSON
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.status === 'streaming' && data.chunk) {
+            onChunk(data.chunk);
+          } else if (data.status === 'completed' && data.result) {
+            onComplete(data.result);
+            return;
+          } else if (data.status === 'failed') {
+            onError(data.error || 'Audit failed');
+            return;
+          } else if (['connecting', 'analyzing', 'scanning', 'queued'].includes(data.status)) {
+            onChunk(data.status + '...\n');
           }
+        } catch {
+          // skip malformed JSON
         }
       }
     }
+    // Stream ended without completion
+    onError('Stream ended unexpectedly');
   } catch (e) {
-    onError(e.message);
+    onError(e.name === 'AbortError' ? 'Stream timed out' : e.message);
   }
 }
 
 export async function getAuditStatus(taskId) {
-  const res = await fetch(`${API_BASE}/audit/status/${taskId}`);
+  const res = await fetchWithTimeout(`${API_BASE}/audit/status/${taskId}`);
   return res.json();
 }
 
 export async function getAuditReport(taskId) {
-  const res = await fetch(`${API_BASE}/audit/report/${taskId}`);
+  const res = await fetchWithTimeout(`${API_BASE}/audit/report/${taskId}`);
   return res.json();
 }
 
 export async function getChains() {
   try {
-    const res = await fetch(`${API_BASE}/chains`);
+    const res = await fetchWithTimeout(`${API_BASE}/chains`, {}, 5000);
     return res.json();
   } catch {
     return [
@@ -86,54 +129,40 @@ export async function getChains() {
 }
 
 export async function chat(message, history = [], provider = 'nvidia', model = 'minimaxai/minimax-m2.5') {
-  const res = await fetch(`${API_BASE}/chat`, {
+  const res = await fetchWithTimeout(`${API_BASE}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message, history, provider, model }),
-  });
+  }, 60000);
   return res.json();
 }
 
 export async function exportMarkdown(taskId) {
-  const res = await fetch(`${API_BASE}/export/markdown/${taskId}`);
+  const res = await fetchWithTimeout(`${API_BASE}/export/markdown/${taskId}`);
   return res.text();
 }
 
 export async function exportPdf(taskId) {
-  const res = await fetch(`${API_BASE}/export/pdf/${taskId}`);
+  const res = await fetchWithTimeout(`${API_BASE}/export/pdf/${taskId}`);
   return res.text();
 }
 
 export async function getPoc(taskId) {
-  const res = await fetch(`${API_BASE}/poc/${taskId}`);
+  const res = await fetchWithTimeout(`${API_BASE}/poc/${taskId}`);
   return res.json();
 }
 
-export async function detectGas(code) {
-  const res = await fetch(`${API_BASE}/detect/gas`, {
+async function detect(code, endpoint) {
+  const res = await fetchWithTimeout(`${API_BASE}/detect/${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code }),
-  });
+  }, 30000);
   return res.json();
 }
 
-export async function detectFrontrun(code) {
-  const res = await fetch(`${API_BASE}/detect/frontrun`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code }),
-  });
-  return res.json();
-}
-
-export async function detectOracle(code) {
-  const res = await fetch(`${API_BASE}/detect/oracle`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code }),
-  });
-  return res.json();
-}
+export const detectGas = (code) => detect(code, 'gas');
+export const detectFrontrun = (code) => detect(code, 'frontrun');
+export const detectOracle = (code) => detect(code, 'oracle');
 
 export default { startAudit, streamAudit, getAuditStatus, getAuditReport, getChains, chat, exportMarkdown, exportPdf, getPoc, detectGas, detectFrontrun, detectOracle };

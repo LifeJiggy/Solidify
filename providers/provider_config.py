@@ -134,19 +134,19 @@ def load_from_env() -> UnifiedProviderConfig:
     config = UnifiedProviderConfig()
     
     config.google.credentials.api_key = os.getenv("GEMINI_API_KEY", "")
-    config.google.default_model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+    config.google.default_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     config.google.enabled = bool(config.google.credentials.api_key)
     
     config.openai.credentials.api_key = os.getenv("OPENAI_API_KEY", "")
-    config.openai.default_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    config.openai.default_model = os.getenv("OPENAI_MODEL", "gpt-5-mini")
     config.openai.enabled = bool(config.openai.credentials.api_key)
     
     config.anthropic.credentials.api_key = os.getenv("ANTHROPIC_API_KEY", "")
-    config.anthropic.default_model = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
+    config.anthropic.default_model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
     config.anthropic.enabled = bool(config.anthropic.credentials.api_key)
     
     config.ollama.credentials.base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    config.ollama.default_model = os.getenv("OLLAMA_MODEL", "llama3.1-70b-instruct")
+    config.ollama.default_model = os.getenv("OLLAMA_MODEL", "llama3.3")
     config.ollama.enabled = True
     
     config.groq.credentials.api_key = os.getenv("GROQ_API_KEY", "")
@@ -158,7 +158,7 @@ def load_from_env() -> UnifiedProviderConfig:
     config.qwen.enabled = bool(config.qwen.credentials.api_key)
     
     config.nvidia.credentials.api_key = os.getenv("NVIDIA_API_KEY", "")
-    config.nvidia.default_model = os.getenv("NVIDIA_MODEL", "nvidia/llama-3.1-nemotron-70b-instruct")
+    config.nvidia.default_model = os.getenv("NVIDIA_MODEL", "nvidia/nvidia-nemotron-nano-9b-v2")
     config.nvidia.enabled = bool(config.nvidia.credentials.api_key)
     
     config.default_provider = os.getenv("DEFAULT_PROVIDER", "google")

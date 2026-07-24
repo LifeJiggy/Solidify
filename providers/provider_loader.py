@@ -39,27 +39,27 @@ AVAILABLE_PROVIDERS = {
         module="providers.google",
         class_name="GoogleProvider",
         require_api_key=True,
-        max_context=1000000,
+        max_context=1048576,
         description="Google Gemini AI",
-        models=["gemini-2.0-flash", "gemini-1.5-pro", "gemini-pro"]
+        models=["gemini-2.5-flash", "gemini-2.5-pro", "gemini-3.5-flash"]
     ),
     "openai": ProviderMetadata(
         name="openai",
         module="providers.openai",
         class_name="OpenAIProvider",
         require_api_key=True,
-        max_context=128000,
+        max_context=400000,
         description="OpenAI GPT",
-        models=["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
+        models=["gpt-5-mini", "gpt-5", "gpt-5.4"]
     ),
     "anthropic": ProviderMetadata(
         name="anthropic",
         module="providers.anthropic",
         class_name="AnthropicProvider",
         require_api_key=True,
-        max_context=200000,
+        max_context=1000000,
         description="Anthropic Claude",
-        models=["claude-3-5-sonnet", "claude-3-opus", "claude-3-haiku"]
+        models=["claude-sonnet-4-6", "claude-opus-4-8", "claude-haiku-4-5"]
     ),
     "ollama": ProviderMetadata(
         name="ollama",
@@ -67,9 +67,9 @@ AVAILABLE_PROVIDERS = {
         class_name="OllamaProvider",
         require_api_key=False,
         supports_embeddings=True,
-        max_context=128000,
+        max_context=131072,
         description="Ollama Local Models",
-        models=["llama3.1-70b", "llama3.1-8b", "codellama", "mixtral"]
+        models=["llama3.3", "llama4-maverick", "qwen3", "gemma4"]
     ),
     "groq": ProviderMetadata(
         name="groq",
@@ -77,18 +77,18 @@ AVAILABLE_PROVIDERS = {
         class_name="GroqProvider",
         require_api_key=True,
         supports_streaming=True,
-        max_context=128000,
+        max_context=131072,
         description="Groq LPU",
-        models=["llama-3.3-70b", "mixtral-8x7b", "gemma2-9b"]
+        models=["llama-3.3-70b-versatile", "llama-4-scout-17b", "deepseek-r1-distill-llama-70b"]
     ),
     "qwen": ProviderMetadata(
         name="qwen",
         module="providers.qwen",
         class_name="QwenProvider",
         require_api_key=True,
-        max_context=128000,
+        max_context=512000,
         description="Alibaba Qwen",
-        models=["qwen-plus", "qwen-turbo", "qwen2.5-coder"]
+        models=["qwen5-max", "qwen3-32b", "qwen3-coder-480b-a35b"]
     ),
     "nvidia": ProviderMetadata(
         name="nvidia",
@@ -96,9 +96,9 @@ AVAILABLE_PROVIDERS = {
         class_name="NvidiaProvider",
         require_api_key=True,
         supports_embeddings=True,
-        max_context=128000,
+        max_context=262144,
         description="NVIDIA NIM",
-        models=["nemotron-70b", "codellama-70b", "deepseek-coder"]
+        models=["nvidia/nemotron-3-ultra-550b-a55b", "nvidia/nemotron-3-super-120b-a12b", "meta/llama-4-maverick-17b-128e-instruct"]
     ),
 }
 

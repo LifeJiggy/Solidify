@@ -16,17 +16,20 @@ logger = logging.getLogger(__name__)
 
 
 class MiniMaxModel(Enum):
-    M2_7 = "abab6.5s-chat"
-    M2_5 = "abab6.5g-chat"
-    M2 = "abab6-chat"
+    M3 = "MiniMax-M3"
+    M2_7 = "MiniMax-M2.7"
+    M2_5 = "MiniMax-M2.5"
+    M2_1 = "MiniMax-M2.1"
+    M2 = "MiniMax-M2"
+    TEXT_01 = "MiniMax-Text-01"
+    VISION_01 = "MiniMax-Vision-01"
 
 
 @dataclass
 class MiniMaxConfig:
     api_key: str
-    api_id: str
-    model: str = "abab6.5s-chat"
-    base_url: str = "https://api.minimax.chat/v1/text/chatcompletion_v2"
+    model: str = "MiniMax-M3"
+    base_url: str = "https://api.minimax.io/v1"
     temperature: float = 0.7
     max_tokens: int = 8192
     timeout: int = 120
@@ -42,27 +45,63 @@ class MiniMaxResponse:
 
 
 MODELS = {
-    "abab6.5s-chat": {
-        "name": "MiniMax M2.7",
-        "context_window": 245760,
+    "MiniMax-M3": {
+        "name": "MiniMax M3",
+        "context_window": 1048576,
         "category": "PREMIUM",
         "use_cases": [
             "smart-contract-audit",
             "vulnerability-analysis",
             "comprehensive-analysis",
+            "reasoning",
         ],
+        "release_date": "2026-06",
     },
-    "abab6.5g-chat": {
+    "MiniMax-M2.7": {
+        "name": "MiniMax M2.7",
+        "context_window": 200000,
+        "category": "PREMIUM",
+        "use_cases": [
+            "smart-contract-audit",
+            "vulnerability-analysis",
+            "code-analysis",
+        ],
+        "release_date": "2025-04",
+    },
+    "MiniMax-M2.5": {
         "name": "MiniMax M2.5",
-        "context_window": 245760,
-        "category": "FAST",
-        "use_cases": ["quick-scan", "preliminary-analysis"],
+        "context_window": 256000,
+        "category": "PREMIUM",
+        "use_cases": ["security-analysis", "vulnerability-detection"],
+        "release_date": "2025-06",
     },
-    "abab6-chat": {
+    "MiniMax-M2.1": {
+        "name": "MiniMax M2.1",
+        "context_window": 200000,
+        "category": "HUNTING",
+        "use_cases": ["security-analysis", "code-review"],
+        "release_date": "2025-03",
+    },
+    "MiniMax-M2": {
         "name": "MiniMax M2",
-        "context_window": 8192,
-        "category": "BASIC",
-        "use_cases": ["simple-analysis"],
+        "context_window": 131072,
+        "category": "HUNTING",
+        "use_cases": ["security-analysis", "code-review"],
+        "release_date": "2025-01",
+    },
+    "MiniMax-Text-01": {
+        "name": "MiniMax Text 01",
+        "context_window": 512000,
+        "category": "FAST",
+        "use_cases": ["quick-scan", "text-analysis"],
+        "release_date": "2024-12",
+    },
+    "MiniMax-Vision-01": {
+        "name": "MiniMax Vision 01",
+        "context_window": 32768,
+        "category": "SPECIALIZED",
+        "use_cases": ["vision", "diagram-analysis"],
+        "release_date": "2025-02",
     },
 }
 
@@ -73,7 +112,6 @@ class MiniMaxProvider:
     def __init__(self, config: Optional[MiniMaxConfig] = None):
         self.config = config or MiniMaxConfig(
             api_key=os.getenv("MINIMAX_API_KEY", ""),
-            api_id=os.getenv("MINIMAX_API_ID", ""),
         )
         self._client = None
 
@@ -113,7 +151,7 @@ class MiniMaxProvider:
 
             async with httpx.AsyncClient(timeout=self.config.timeout) as client:
                 response = await client.post(
-                    f"{self.config.base_url}?GroupId={self.config.api_id}",
+                    f"{self.config.base_url}/chat/completions",
                     json=payload,
                     headers=headers,
                 )
@@ -161,7 +199,7 @@ class MiniMaxProvider:
             async with httpx.AsyncClient(timeout=self.config.timeout) as client:
                 async with client.stream(
                     "POST",
-                    f"{self.config.base_url}?GroupId={self.config.api_id}",
+                    f"{self.config.base_url}/chat/completions",
                     json=payload,
                     headers=headers,
                 ) as resp:
@@ -182,18 +220,16 @@ class MiniMaxProvider:
         }
 
     def is_available(self) -> bool:
-        return bool(self.config.api_key and self.config.api_id)
+        return bool(self.config.api_key)
 
 
 def create_minimax_provider(
     api_key: Optional[str] = None,
-    api_id: Optional[str] = None,
-    model: str = "abab6.5s-chat",
+    model: str = "MiniMax-M3",
     **kwargs,
 ) -> MiniMaxProvider:
     config = MiniMaxConfig(
         api_key=api_key or os.getenv("MINIMAX_API_KEY", ""),
-        api_id=api_id or os.getenv("MINIMAX_API_ID", ""),
         model=model,
         **{
             k: v

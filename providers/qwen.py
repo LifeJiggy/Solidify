@@ -17,15 +17,34 @@ logger = logging.getLogger(__name__)
 
 
 class QwenModel(Enum):
-    QWEN_3_397B = "qwen-plus"
-    QWEN_3_72B = "qwen-turbo"
-    QWEN_2_5_72B = "qwen2.5-plus-instruct"
-    QWEN_2_5_32B = "qwen2.5-32b-instruct"
-    QWEN_2_5_7B = "qwen2.5-7b-instruct"
-    QWEN_CODER_32B = "qwen2.5-coder-32b-instruct"
-    QWEN_CODER_7B = "qwen2.5-coder-7b-instruct"
-    QWEN_VL_32B = "qwen2.5-vl-32b-instruct"
-    QWEN_VL_3B = "qwen2.5-vl-3b-instruct"
+    QWEN5_MAX = "qwen5-max"
+    QWEN5_PLUS = "qwen5-plus"
+    QWEN5 = "qwen5"
+    QWEN5_MINI = "qwen5-mini"
+    QWEN5_TINY = "qwen5-tiny"
+    QWEN4_MAX = "qwen4-max"
+    QWEN4_PLUS = "qwen4-plus"
+    QWEN4 = "qwen4"
+    QWEN4_MINI = "qwen4-mini"
+    QWEN4_TINY = "qwen4-tiny"
+    QWEN3_MAX = "qwen3-max"
+    QWEN3_PLUS = "qwen3-plus"
+    QWEN3_235B = "qwen3-235b"
+    QWEN3_32B = "qwen3-32b"
+    QWEN3_8B = "qwen3-8b"
+    QWEN3_CODER_480B = "qwen3-coder-480b-a35b"
+    QWEN3_CODER_PLUS = "qwen3-coder-plus"
+    QWEN3_CODER_FLASH = "qwen3-coder-flash"
+    QWEN3_NEXT_80B = "qwen3-next-80b-a3b-instruct"
+    QWEN3_VL_32B = "qwen3-vl-32b"
+    QWQ_32B = "qwq-32b"
+    QWEN2_5_MAX = "qwen2.5-max"
+    QWEN2_5_PLUS = "qwen2.5-plus"
+    QWEN2_5_TURBO = "qwen2.5-turbo"
+    QWEN2_5_CODER_32B = "qwen2.5-coder-32b"
+    QWEN2_5_CODER_7B = "qwen2.5-coder-7b"
+    QWEN_PLUS = "qwen-plus"
+    QWEN_TURBO = "qwen-turbo"
 
 
 @dataclass
@@ -48,35 +67,175 @@ class QwenResponse:
 
 
 MODELS = {
+    # ---- QWEN 5 (2026 latest) ----
+    "qwen5-max": {
+        "name": "Qwen 5 Max",
+        "context_window": 512000,
+        "category": "PREMIUM",
+        "use_cases": ["smart-contract-audit", "comprehensive-analysis"],
+    },
+    "qwen5-plus": {
+        "name": "Qwen 5 Plus",
+        "context_window": 256000,
+        "category": "PREMIUM",
+        "use_cases": ["security-analysis", "vulnerability-detection"],
+    },
+    "qwen5": {
+        "name": "Qwen 5",
+        "context_window": 256000,
+        "category": "HUNTING",
+        "use_cases": ["security-audit", "reasoning"],
+    },
+    "qwen5-mini": {
+        "name": "Qwen 5 Mini",
+        "context_window": 131072,
+        "category": "FAST",
+        "use_cases": ["quick-scan", "fast-analysis"],
+    },
+    "qwen5-tiny": {
+        "name": "Qwen 5 Tiny",
+        "context_window": 131072,
+        "category": "FAST",
+        "use_cases": ["ultra-fast", "lightweight"],
+    },
+    # ---- QWEN 4 ----
+    "qwen4-max": {
+        "name": "Qwen 4 Max",
+        "context_window": 256000,
+        "category": "PREMIUM",
+        "use_cases": ["comprehensive-audit", "advanced-analysis"],
+    },
+    "qwen4-plus": {
+        "name": "Qwen 4 Plus",
+        "context_window": 200000,
+        "category": "PREMIUM",
+        "use_cases": ["security-analysis", "reasoning"],
+    },
+    "qwen4": {
+        "name": "Qwen 4",
+        "context_window": 200000,
+        "category": "HUNTING",
+        "use_cases": ["security-audit", "code-analysis"],
+    },
+    "qwen4-mini": {
+        "name": "Qwen 4 Mini",
+        "context_window": 131072,
+        "category": "FAST",
+        "use_cases": ["quick-scan", "fast-analysis"],
+    },
+    "qwen4-tiny": {
+        "name": "Qwen 4 Tiny",
+        "context_window": 131072,
+        "category": "FAST",
+        "use_cases": ["ultra-fast", "lightweight"],
+    },
+    # ---- QWEN 3 ----
+    "qwen3-max": {
+        "name": "Qwen 3 Max",
+        "context_window": 262144,
+        "category": "PREMIUM",
+        "use_cases": ["comprehensive-audit", "advanced-reasoning"],
+    },
+    "qwen3-plus": {
+        "name": "Qwen 3 Plus",
+        "context_window": 131072,
+        "category": "PREMIUM",
+        "use_cases": ["security-analysis", "vulnerability-detection"],
+    },
+    "qwen3-235b": {
+        "name": "Qwen 3 235B",
+        "context_window": 131072,
+        "category": "PREMIUM",
+        "use_cases": ["comprehensive-audit", "analysis"],
+    },
+    "qwen3-32b": {
+        "name": "Qwen 3 32B",
+        "context_window": 131072,
+        "category": "CODE_ANALYSIS",
+        "use_cases": ["code-review", "solidity-analysis"],
+    },
+    "qwen3-8b": {
+        "name": "Qwen 3 8B",
+        "context_window": 131072,
+        "category": "FAST",
+        "use_cases": ["quick-scan", "fast-analysis"],
+    },
+    # ---- QWEN 3 CODER ----
+    "qwen3-coder-480b-a35b": {
+        "name": "Qwen3 Coder 480B",
+        "context_window": 262000,
+        "category": "CODE_SECURITY",
+        "use_cases": ["advanced-code-analysis", "vulnerability-detection"],
+    },
+    "qwen3-coder-plus": {
+        "name": "Qwen3 Coder Plus",
+        "context_window": 1000000,
+        "category": "CODE_SECURITY",
+        "use_cases": ["code-review", "security-scanning"],
+    },
+    "qwen3-coder-flash": {
+        "name": "Qwen3 Coder Flash",
+        "context_window": 1000000,
+        "category": "CODE_SECURITY",
+        "use_cases": ["fast-code-analysis", "quick-scan"],
+    },
+    # ---- QWEN 3 NEXT ----
+    "qwen3-next-80b-a3b-instruct": {
+        "name": "Qwen3 Next 80B",
+        "context_window": 262144,
+        "category": "REASONING",
+        "use_cases": ["advanced-thinking", "reasoning"],
+    },
+    # ---- QWQ ----
+    "qwq-32b": {
+        "name": "QwQ 32B",
+        "context_window": 32768,
+        "category": "REASONING",
+        "use_cases": ["reasoning", "security-analysis"],
+    },
+    # ---- QWEN 2.5 ----
+    "qwen2.5-max": {
+        "name": "Qwen 2.5 Max",
+        "context_window": 131072,
+        "category": "PREMIUM",
+        "use_cases": ["comprehensive-audit", "analysis"],
+    },
+    "qwen2.5-plus": {
+        "name": "Qwen 2.5 Plus",
+        "context_window": 131072,
+        "category": "CODE_ANALYSIS",
+        "use_cases": ["code-review", "vulnerability-detection"],
+    },
+    "qwen2.5-turbo": {
+        "name": "Qwen 2.5 Turbo",
+        "context_window": 131072,
+        "category": "FAST",
+        "use_cases": ["quick-scan", "fast-analysis"],
+    },
+    "qwen2.5-coder-32b": {
+        "name": "Qwen 2.5 Coder 32B",
+        "context_window": 32768,
+        "category": "CODE_SECURITY",
+        "use_cases": ["code-review", "vulnerability-scanning"],
+    },
+    "qwen2.5-coder-7b": {
+        "name": "Qwen 2.5 Coder 7B",
+        "context_window": 32768,
+        "category": "CODE_SECURITY",
+        "use_cases": ["code-analysis", "quick-scan"],
+    },
+    # ---- LEGACY ----
     "qwen-plus": {
         "name": "Qwen Plus",
-        "context_window": 128000,
+        "context_window": 32768,
         "category": "PREMIUM",
         "use_cases": ["smart-contract-audit", "comprehensive-analysis"],
     },
     "qwen-turbo": {
         "name": "Qwen Turbo",
-        "context_window": 100000,
+        "context_window": 16384,
         "category": "FAST",
         "use_cases": ["quick-scan", "preliminary-analysis"],
-    },
-    "qwen2.5-plus-instruct": {
-        "name": "Qwen 2.5 Plus",
-        "context_window": 32768,
-        "category": "CODE_ANALYSIS",
-        "use_cases": ["code-review", "vulnerability-detection"],
-    },
-    "qwen2.5-32b-instruct": {
-        "name": "Qwen 2.5 32B",
-        "context_window": 32768,
-        "category": "CODE_ANALYSIS",
-        "use_cases": ["solidity-analysis", "security-patterns"],
-    },
-    "qwen2.5-coder-32b-instruct": {
-        "name": "Qwen 2.5 Coder 32B",
-        "context_window": 32768,
-        "category": "CODE_SECURITY",
-        "use_cases": ["code-review", "vulnerability-scanning"],
     },
 }
 

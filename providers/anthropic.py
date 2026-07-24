@@ -16,17 +16,23 @@ logger = logging.getLogger(__name__)
 
 
 class AnthropicModel(Enum):
-    CLAUDE_35_SONNET = "claude-3-5-sonnet-20241022"
+    CLAUDE_OPUS_4_8 = "claude-opus-4-8"
+    CLAUDE_OPUS_4_7 = "claude-opus-4-7"
+    CLAUDE_OPUS_4_6 = "claude-opus-4-6"
+    CLAUDE_OPUS_4_5 = "claude-opus-4-5-20251101"
+    CLAUDE_SONNET_4_6 = "claude-sonnet-4-6"
+    CLAUDE_SONNET_4_5 = "claude-sonnet-4-5-20250929"
+    CLAUDE_SONNET_4 = "claude-sonnet-4"
+    CLAUDE_4_SONNET = "claude-4-sonnet-20250514"
+    CLAUDE_4_OPUS = "claude-4-opus-20250514"
+    CLAUDE_HAIKU_4_5 = "claude-haiku-4-5-20251001"
     CLAUDE_35_HAIKU = "claude-3-5-haiku-20241022"
-    CLAUDE_3_OPUS = "claude-3-opus-20240229"
-    CLAUDE_3_SONNET = "claude-3-sonnet-20240229"
-    CLAUDE_3_HAIKU = "claude-3-haiku-20240307"
 
 
 @dataclass
 class AnthropicConfig:
     api_key: str
-    model: str = "claude-3-5-sonnet-20241022"
+    model: str = "claude-sonnet-4-6"
     base_url: str = "https://api.anthropic.com"
     temperature: float = 0.7
     max_tokens: int = 8192
@@ -150,7 +156,7 @@ class AnthropicProvider:
 
 
 def create_anthropic_provider(
-    api_key: Optional[str] = None, model: str = "claude-3-5-sonnet-20241022", **kwargs
+    api_key: Optional[str] = None, model: str = "claude-sonnet-4-6", **kwargs
 ) -> AnthropicProvider:
     config = AnthropicConfig(
         api_key=api_key or os.getenv("ANTHROPIC_API_KEY", ""),
