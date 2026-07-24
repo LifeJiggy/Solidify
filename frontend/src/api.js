@@ -165,4 +165,19 @@ export const detectGas = (code) => detect(code, 'gas');
 export const detectFrontrun = (code) => detect(code, 'frontrun');
 export const detectOracle = (code) => detect(code, 'oracle');
 
-export default { startAudit, streamAudit, getAuditStatus, getAuditReport, getChains, chat, exportMarkdown, exportPdf, getPoc, detectGas, detectFrontrun, detectOracle };
+export async function stopAudit(taskId) {
+  const res = await fetchWithTimeout(`${API_BASE}/audit/stop/${taskId}`, { method: 'POST' }, 5000);
+  return res.json();
+}
+
+export async function pauseAudit(taskId) {
+  const res = await fetchWithTimeout(`${API_BASE}/audit/pause/${taskId}`, { method: 'POST' }, 5000);
+  return res.json();
+}
+
+export async function resumeAudit(taskId) {
+  const res = await fetchWithTimeout(`${API_BASE}/audit/resume/${taskId}`, { method: 'POST' }, 5000);
+  return res.json();
+}
+
+export default { startAudit, streamAudit, getAuditStatus, getAuditReport, getChains, chat, exportMarkdown, exportPdf, getPoc, detectGas, detectFrontrun, detectOracle, stopAudit, pauseAudit, resumeAudit };

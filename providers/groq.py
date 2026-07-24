@@ -236,6 +236,10 @@ class GroqProvider:
         try:
             import aiohttp
 
+            if not self.config.api_key or len(self.config.api_key) < 8:
+                yield '{"error": "Invalid API key"}'
+                return
+
             headers = {
                 "Authorization": f"Bearer {self.config.api_key}",
                 "Content-Type": "application/json",
@@ -243,32 +247,50 @@ class GroqProvider:
 
             payload = {
                 "model": model,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": [{"role": "user", "content": prompt[:80000]}],
                 "temperature": kwargs.get("temperature", self.config.temperature),
                 "stream": True,
+                "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
             }
 
-            async with aiohttp.ClientSession() as session:
+            timeout = aiohttp.ClientTimeout(total=self.config.timeout)
+            connector = aiohttp.TCPConnector(limit=10, force_close=True)
+            async with aiohttp.ClientSession(connector=connector) as session:
                 async with session.post(
                     f"{self.config.base_url}/chat/completions",
                     json=payload,
                     headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=self.config.timeout),
+                    timeout=timeout,
                 ) as resp:
                     if resp.status != 200:
                         error = await resp.text()
-                        yield f'{{"error": "{error}"}}'
+                        yield f'{{"error": "HTTP {resp.status}: {error[:200]}"}}'
                         return
 
                     async for line in resp.content:
-                        line = line.decode("utf-8")
+                        line = line.decode("utf-8").strip()
+                        if not line:
+                            continue
                         if line.startswith("data: "):
-                            if line.strip() == "data: [DONE]":
+                            raw = line[6:]
+                            if raw == "[DONE]":
                                 break
-                            yield line
+                            try:
+                                obj = json.loads(raw)
+                                choices = obj.get("choices", [])
+                                if choices:
+                                    delta = choices[0].get("delta", {})
+                                    content = delta.get("content", "")
+                                    if content:
+                                        yield content
+                            except json.JSONDecodeError:
+                                yield raw
+        except asyncio.TimeoutError:
+            logger.error("Groq stream timed out")
+            yield '{"error": "Stream timed out"}'
         except Exception as e:
             logger.error(f"Groq stream error: {e}")
-            yield f'{{"error": "{str(e)}"}}'
+            yield f'{{"error": "{str(e)[:200]}"}}'
 
     def get_statistics(self) -> Dict[str, Any]:
         return {

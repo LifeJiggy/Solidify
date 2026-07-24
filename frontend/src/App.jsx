@@ -14,6 +14,7 @@ import AuditHistory, { saveAuditToHistory } from './components/AuditHistory';
 import SeverityFilter from './components/SeverityFilter';
 import CopyButton from './components/CopyButton';
 import AuditTimer from './components/AuditTimer';
+import AuditControls from './components/AuditControls';
 import SampleContracts from './components/SampleContracts';
 import AutoSaveDraft, { loadDraft } from './components/AutoSaveDraft';
 import BookmarkedContracts from './components/BookmarkedContracts';
@@ -81,6 +82,7 @@ export default function App() {
   const [chain, setChain] = useState('ethereum');
   const [contractAddress, setContractAddress] = useState('');
   const [taskId, setTaskId] = useState(null);
+  const [taskRunState, setTaskRunState] = useState(null);
   const [status, setStatus] = useState(null);
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -162,6 +164,7 @@ export default function App() {
         ...(payload.address ? { address: payload.address } : {})
       });
       setTaskId(result.task_id);
+      setTaskRunState('running');
 
       streamAudit(
         result.task_id,
@@ -173,28 +176,31 @@ export default function App() {
             setStreamOutput(prev => prev + chunk);
           }
         },
-        (auditResult) => {
-          setReport(auditResult);
-          setStatus({ status: 'completed' });
-          setStreamProgress('Complete!');
-          setStreamOutput(prev =>
-            prev + '\n\n✓ Audit Complete!\n\nScore: ' + auditResult.score + '/10\nVulnerabilities: ' +
-            (auditResult.vulnerabilities?.length || 0) + '\n\n' + (auditResult.summary || '')
-          );
-          saveAuditToHistory(contract || input, auditResult);
-          setLoading(false);
-        },
-        (error) => {
-          showToast(error || 'Audit failed', 'error');
-          setStreamOutput(prev => prev + '\n[Error: ' + error + ']');
-          setStreamProgress('Failed');
-          setLoading(false);
-        }
+          (auditResult) => {
+            setReport(auditResult);
+            setStatus({ status: 'completed' });
+            setStreamProgress('Complete!');
+            setStreamOutput(prev =>
+              prev + '\n\n✓ Audit Complete!\n\nScore: ' + auditResult.score + '/10\nVulnerabilities: ' +
+              (auditResult.vulnerabilities?.length || 0) + '\n\n' + (auditResult.summary || '')
+            );
+            saveAuditToHistory(contract || input, auditResult);
+            setTaskRunState(null);
+            setLoading(false);
+          },
+          (error) => {
+            showToast(error || 'Audit failed', 'error');
+            setStreamOutput(prev => prev + '\n[Error: ' + error + ']');
+            setStreamProgress('Failed');
+            setTaskRunState(null);
+            setLoading(false);
+          }
       );
     } catch (e) {
       showToast(e.message || 'Failed to start audit', 'error');
       setStreamOutput('Error: ' + e.message);
       setStreamProgress('Failed');
+      setTaskRunState(null);
       setLoading(false);
     }
   }, [getCodeOrAddress, mode, contract, contractAddress, provider, model]);
@@ -463,11 +469,14 @@ export default function App() {
 
           {loading && status && <StatusBar status={status.status} />}
 
-          {(streamOutput || streamProgress) && (
+          {(streamOutput || streamProgress || taskRunState) && (
             <div className="stream-panel">
               <div className="stream-header">
                 <span className="stream-status">{streamProgress || 'Processing...'}</span>
-                {streamOutput && <CopyButton text={streamOutput} label="Copy Output" />}
+                <div className="stream-actions">
+                  {streamOutput && <CopyButton text={streamOutput} label="Copy Output" />}
+                  <AuditControls taskId={taskId} status={taskRunState} onStateChange={setTaskRunState} />
+                </div>
               </div>
               <pre className="stream-content">{streamOutput || 'Waiting...'}</pre>
             </div>

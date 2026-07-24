@@ -41,6 +41,18 @@ class StreamConfig:
     parse_tools: bool = True
     on_event: Optional[Callable[[StreamEvent], None]] = None
     provider_name: str = "unknown"
+    max_chunks: int = 10000
+    max_chars: int = 100000
+    timeout_per_chunk: float = 30.0
+
+    def __post_init__(self):
+        if self.buffer_size < 1:
+            self.buffer_size = 1
+        if self.max_chunks < 1:
+            self.max_chunks = 10000
+        if self.max_chars < 1:
+            self.max_chars = 100000
+        self.provider_name = self.provider_name[:50]
 
 
 class SSEParser:
@@ -221,29 +233,43 @@ class StreamingProcessor:
     ) -> AsyncIterator[StreamEvent]:
         reasoning_accumulated = ""
         content_buffer = ""
+        total_chars = 0
+        chunk_idx = 0
 
         async for chunk in raw_stream:
-            if self.parser.is_done(chunk):
-                if content_buffer:
-                    yield StreamEvent(
-                        event_type=StreamEventType.CONTENT, content=content_buffer
-                    )
-                yield StreamEvent(event_type=StreamEventType.DONE)
-                return
+            chunk_idx += 1
+            if chunk_idx > self.config.max_chunks:
+                logger.warning(f"[{self.provider}] Stream exceeded max chunks ({self.config.max_chunks})")
+                break
 
-            data = self.parser.parse_chunk(chunk)
+            if total_chars > self.config.max_chars:
+                logger.warning(f"[{self.provider}] Stream exceeded max chars ({self.config.max_chars})")
+                break
+
+            try:
+                data = self.parser.parse_chunk(chunk)
+            except Exception:
+                continue
+
             if not data:
                 continue
 
+            if data.get("done") or self.parser.is_done(chunk):
+                break
+
             content = self.parser.extract_content(data)
             if content:
+                content = "".join(c for c in content if c >= " " or c in "\n\r\t")
+                total_chars += len(content)
                 buffered = self._buffer.add(content)
                 for buf in buffered:
+                    content_buffer += buf
                     yield StreamEvent(event_type=StreamEventType.CONTENT, content=buf)
 
             if self.config.include_reasoning:
                 reasoning = self.parser.extract_reasoning(data)
                 if reasoning:
+                    reasoning = "".join(c for c in reasoning if c >= " " or c in "\n\r\t")
                     reasoning_accumulated += reasoning
                     yield StreamEvent(
                         event_type=StreamEventType.REASONING, reasoning=reasoning
@@ -257,6 +283,8 @@ class StreamingProcessor:
             yield StreamEvent(
                 event_type=StreamEventType.REASONING, reasoning=reasoning_accumulated
             )
+        if total_chars > 0:
+            logger.info(f"[{self.provider}] Stream done: {chunk_idx} chunks, {total_chars} chars")
         yield StreamEvent(event_type=StreamEventType.DONE)
 
     async def process_stream_simple(

@@ -334,28 +334,45 @@ class OllamaProvider:
 
             payload = {
                 "model": model,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": [{"role": "user", "content": prompt[:80000]}],
                 "temperature": kwargs.get("temperature", self.config.temperature),
                 "stream": True,
+                "options": {"num_predict": kwargs.get("max_tokens", self.config.max_tokens)},
             }
 
-            async with aiohttp.ClientSession() as session:
+            timeout = aiohttp.ClientTimeout(total=self.config.timeout)
+            connector = aiohttp.TCPConnector(limit=10, force_close=True)
+            async with aiohttp.ClientSession(connector=connector) as session:
                 async with session.post(
                     f"{self.config.base_url}/api/chat",
                     json=payload,
-                    timeout=aiohttp.ClientTimeout(total=self.config.timeout),
+                    timeout=timeout,
                 ) as resp:
                     if resp.status != 200:
                         error = await resp.text()
-                        yield f'{{"error": "{error}"}}'
+                        yield f'{{"error": "HTTP {resp.status}: {error[:200]}"}}'
                         return
 
                     async for line in resp.content:
-                        if line:
-                            yield line.decode("utf-8")
+                        line = line.decode("utf-8").strip()
+                        if not line:
+                            continue
+                        try:
+                            obj = json.loads(line)
+                            if obj.get("done", False):
+                                break
+                            msg = obj.get("message", {})
+                            content = msg.get("content", "")
+                            if content:
+                                yield content
+                        except json.JSONDecodeError:
+                            yield line
+        except asyncio.TimeoutError:
+            logger.error("Ollama stream timed out")
+            yield '{"error": "Stream timed out"}'
         except Exception as e:
             logger.error(f"Ollama stream error: {e}")
-            yield f'{{"error": "{str(e)}"}}'
+            yield f'{{"error": "{str(e)[:200]}"}}'
 
     async def list_models(self) -> List[str]:
         """List available local models"""

@@ -45,6 +45,8 @@ audit_tasks: Dict[str, Dict[str, Any]] = {}
 rate_limits: Dict[str, list] = defaultdict(list)
 active_task_count = 0
 task_cleanup_running = False
+cancelled_tasks = set()
+paused_tasks = set()
 
 CHAINS = {
     "ethereum": {"id": "ethereum", "name": "Ethereum", "chain_id": 1, "explorer": "etherscan.io", "api": "api.etherscan.io"},
@@ -191,29 +193,30 @@ async def fetch_contract_source(address: str, chain: str) -> Optional[str]:
 
 VULNERABILITY_PATTERNS = [
     {"id": "REENTRANCY", "name": "Reentrancy Vulnerability", "severity": "CRITICAL", "cvss": 9.1,
-     "check": lambda c: "call" in c and ("value" in c or ".send(" in c) and "ReentrancyGuard" not in c and "checks-effects" not in c.lower(),
+     "check": lambda c: (".call(" in c or ".send(" in c) and ("value" in c or ".send(" in c) and "ReentrancyGuard" not in c and "checks-effects" not in c.lower() and "nonReentrant" not in c,
      "desc": "External call without reentrancy guard", "fix": "Use ReentrancyGuard modifier or checks-effects-interactions pattern"},
     {"id": "ACCESS_CONTROL", "name": "Missing Access Control", "severity": "CRITICAL", "cvss": 9.0,
-     "check": lambda c: ("withdraw" in c or "transfer" in c or "mint" in c or "burn" in c) and "only" not in c.lower() and "require(msg.sender" not in c,
+     "check": lambda c: ("withdraw" in c or "transfer" in c or "mint" in c or "burn" in c) and "only" not in c.lower() and "require(msg.sender" not in c and "modifier" not in c.lower(),
      "desc": "Critical function without access control", "fix": "Add require(msg.sender == owner) or use OpenZeppelin Ownable"},
     {"id": "INTEGER_OVERFLOW", "name": "Integer Overflow/Underflow", "severity": "HIGH", "cvss": 7.8,
-     "check": lambda c: ("+" in c or "-" in c or "*" in c) and "unchecked" not in c.lower() and "^0.7" in c and "SafeMath" not in c,
+     "check": lambda c: ("+" in c or "-" in c or "*" in c) and "unchecked" not in c.lower() and ("^0.7" in c or "^0.6" in c or "^0.5" in c) and "SafeMath" not in c and "using SafeMath" not in c.lower(),
      "desc": "Arithmetic without SafeMath", "fix": "Use OpenZeppelin SafeMath or solc ^0.8.0"},
     {"id": "TX_ORIGIN", "name": "tx.origin Vulnerability", "severity": "MEDIUM", "cvss": 5.3,
      "check": lambda c: "tx.origin" in c, "desc": "Using tx.origin for authorization", "fix": "Use msg.sender instead of tx.origin"},
     {"id": "UNCHECKED_CALL", "name": "Unchecked External Call", "severity": "HIGH", "cvss": 7.5,
-     "check": lambda c: ".call(" in c and "require(" not in c and "if not" not in c.lower() and "if(" not in c,
+     "check": lambda c: ".call(" in c and "require(" not in c and "if not" not in c.lower() and "if(" not in c and "return" not in c.lower().split("#")[0].split("//")[0],
      "desc": "External call return value not checked", "fix": "Check return value or use SafeERC20"},
     {"id": "TIMESTAMP_DEP", "name": "Timestamp Dependence", "severity": "MEDIUM", "cvss": 4.8,
      "check": lambda c: ("now" in c or "block.timestamp" in c) and ("lottery" in c or "draw" in c or "random" in c or "winner" in c),
      "desc": "Using timestamp for critical logic", "fix": "Use block number or Chainlink oracle"},
-    {"id": "CONSTANT_PRAGMA", "name": "Floating Pragma", "severity": "LOW", "cvss": 2.1,
-     "check": lambda c: "^" in c and "pragma" in c, "desc": "Floating pragma version", "fix": "Lock pragma version e.g. 0.8.19"},
+    {"id": "CONSTANT_PRAGMA", "name": "Floating Pragma", "severity": "INFO", "cvss": 0.5,
+     "check": lambda c: bool(re.search(r"pragma\s+solidity\s+\^", c)),
+     "desc": "Floating pragma version (informational)", "fix": "Lock pragma version e.g. 0.8.19"},
     {"id": "MISSING_ZERO_CHECK", "name": "Missing Zero Address Check", "severity": "MEDIUM", "cvss": 5.5,
-     "check": lambda c: "constructor" in c and "require" not in c.lower() and "address(0)" in c,
-     "desc": "No zero address validation in constructor", "fix": "Add require(addr != address(0))"},
+     "check": lambda c: "address(" in c and ("constructor" in c.split("\n")[0] if c.split("\n") else False) and "require" not in c.split("{")[0] if "{" in c else False,
+     "desc": "No zero address validation in constructor args", "fix": "Add require(addr != address(0))"},
     {"id": "GAS_LIMIT_LOOP", "name": "Unbounded Loop", "severity": "MEDIUM", "cvss": 4.8,
-     "check": lambda c: "for" in c and "length" in c and "i++" in c and "gasleft()" not in c.lower(),
+     "check": lambda c: bool(re.search(r"for\s*\(.*\.\s*length", c)) and "gasleft()" not in c.lower(),
      "desc": "Unbounded loop could hit gas limit", "fix": "Check gasleft() or limit iterations"},
 ]
 
@@ -225,6 +228,12 @@ def parse_solidity(code: str) -> Dict[str, Any]:
 
     for vuln in VULNERABILITY_PATTERNS:
         try:
+            if vuln["id"] == "ACCESS_CONTROL":
+                if "require(msg.sender" in code_lower or "onlyowner" in code_lower or "onlyRole(" in code_lower or "modifier " in code_lower and "auth" in code_lower:
+                    continue
+            if vuln["id"] == "CONSTANT_PRAGMA":
+                if re.search(r"pragma\s+solidity\s+\^0\.(?:8|[9-9]|\d{2})", code_lower) and not any(v["vuln_id"] in ("REENTRANCY", "ACCESS_CONTROL", "INTEGER_OVERFLOW") for v in vulns):
+                    continue
             matches = [f"Line {i}" for i, line in enumerate(lines, 1) if vuln["check"](line)]
             if matches:
                 location = ", ".join(matches[:3])
@@ -362,6 +371,9 @@ async def _run_audit(task_id: str):
     task = audit_tasks[task_id]
     code = task["code"]
 
+    if task_id in cancelled_tasks:
+        return
+
     try:
         _push_event(task, "queued", 5)
         await asyncio.sleep(0.2)
@@ -391,6 +403,13 @@ Return ONLY valid JSON:
             full_response = ""
             try:
                 async for chunk in provider_instance.generate_stream(prompt):
+                    if task_id in cancelled_tasks:
+                        logger.info(f"Task {task_id}: cancelled during stream")
+                        return
+                    while task_id in paused_tasks:
+                        await asyncio.sleep(0.5)
+                        if task_id in cancelled_tasks:
+                            return
                     chunk_str = chunk if isinstance(chunk, str) else chunk.decode()
                     full_response += chunk_str
                     _push_chunk(task, chunk_str)
@@ -472,14 +491,55 @@ async def stream_audit(task_id: str):
                 event = task["events"][seen]
                 seen += 1
                 yield f"data: {json.dumps(event)}\n\n"
-                if event.get("status") == "completed":
+                if event.get("status") in ("completed", "cancelled", "failed"):
                     return
             if task["status"] == "failed":
                 yield f"data: {json.dumps({'status': 'failed', 'error': 'Audit processing failed'})}\n\n"
                 return
+            if task_id in cancelled_tasks:
+                yield f"data: {json.dumps({'status': 'cancelled'})}\n\n"
+                return
             await asyncio.sleep(0.2)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@app.post("/api/audit/stop/{task_id}")
+async def stop_audit(task_id: str):
+    if task_id not in audit_tasks:
+        raise HTTPException(status_code=404, detail="Task not found")
+    cancelled_tasks.add(task_id)
+    paused_tasks.discard(task_id)
+    audit_tasks[task_id]["status"] = "cancelled"
+    audit_tasks[task_id]["events"].append({"status": "cancelled", "progress": 0})
+    logger.info(f"Task {task_id} cancelled by user")
+    return {"task_id": task_id, "status": "cancelled"}
+
+
+@app.post("/api/audit/pause/{task_id}")
+async def pause_audit(task_id: str):
+    if task_id not in audit_tasks:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if audit_tasks[task_id]["status"] in ("completed", "cancelled", "failed"):
+        raise HTTPException(status_code=400, detail="Task already finished")
+    paused_tasks.add(task_id)
+    audit_tasks[task_id]["status"] = "paused"
+    audit_tasks[task_id]["events"].append({"status": "paused", "progress": audit_tasks[task_id].get("progress", 0)})
+    logger.info(f"Task {task_id} paused by user")
+    return {"task_id": task_id, "status": "paused"}
+
+
+@app.post("/api/audit/resume/{task_id}")
+async def resume_audit(task_id: str):
+    if task_id not in audit_tasks:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if audit_tasks[task_id]["status"] != "paused":
+        raise HTTPException(status_code=400, detail="Task is not paused")
+    paused_tasks.discard(task_id)
+    audit_tasks[task_id]["status"] = "queued"
+    audit_tasks[task_id]["events"].append({"status": "resumed", "progress": audit_tasks[task_id].get("progress", 0)})
+    logger.info(f"Task {task_id} resumed by user")
+    return {"task_id": task_id, "status": "resumed"}
 
 
 @app.get("/api/audit/status/{task_id}")
@@ -633,11 +693,11 @@ async def detect_frontrun(code: str = Body(..., embed=True)):
         issues.append({"type": "Unlimited Token Approval", "location": "approve",
                         "issue": "Infinite approval allows draining tokens",
                         "recommendation": "Set specific allowance", "severity": "MEDIUM"})
-    if "onlyowner" not in cl and "msg.sender == owner" not in cl:
-        if "withdraw" in cl or "transfer" in cl:
+    if not any(kw in cl for kw in ["onlyowner", "onlyowner()", "msg.sender == owner", "msg.sender == address(this)", "auth"]):
+        if ("withdraw" in cl or "transfer" in cl) and "constructor" not in cl:
             issues.append({"type": "Missing Access Control", "location": "withdraw/transfer",
                             "issue": "No owner modifier on critical function",
-                            "recommendation": "Add onlyOwner modifier", "severity": "HIGH"})
+                            "recommendation": "Add onlyOwner modifier", "severity": "MEDIUM"})
     return {"vulnerabilities": issues}
 
 

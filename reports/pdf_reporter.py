@@ -8,18 +8,19 @@ Author: Solidify Security Team
 Version: 1.0.0
 """
 
+from __future__ import annotations
+
 import re
 import json
 import time
 import hashlib
 import os
+import logging
 from typing import Dict, List, Optional, Any, Set, Tuple, Callable, Union
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from collections import defaultdict, Counter
-import logging
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -53,7 +54,7 @@ class ReportSection:
     content: str
     order: int
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             'section_id': self.section_id,
@@ -77,7 +78,7 @@ class VulnerabilityEntry:
     line_number: int
     cwe_id: Optional[str] = None
     cvss_score: Optional[float] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             'vuln_id': self.vuln_id,
@@ -104,19 +105,19 @@ class AuditReport:
     vulnerabilities: List[VulnerabilityEntry] = field(default_factory=list)
     statistics: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
-    def add_section(self, section: ReportSection):
+
+    def add_section(self, section: ReportSection) -> None:
         self.sections.append(section)
-    
-    def add_vulnerability(self, vuln: VulnerabilityEntry):
+
+    def add_vulnerability(self, vuln: VulnerabilityEntry) -> None:
         self.vulnerabilities.append(vuln)
-    
+
     def get_severity_counts(self) -> Dict[str, int]:
-        counts = defaultdict(int)
+        counts: Dict[str, int] = defaultdict(int)
         for vuln in self.vulnerabilities:
             counts[vuln.severity.value] += 1
         return dict(counts)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             'report_id': self.report_id,
@@ -132,7 +133,9 @@ class AuditReport:
 
 
 class PDFStyleConfig:
-    def __init__(self):
+    """Configuration for PDF styling."""
+
+    def __init__(self) -> None:
         self.page_size = (210, 297)
         self.margin = 20
         self.font_family = "Helvetica"
@@ -141,8 +144,8 @@ class PDFStyleConfig:
         self.subheading_font_size = 14
         self.body_font_size = 10
         self.line_height = 1.5
-        
-        self.colors = {
+
+        self.colors: Dict[str, Tuple[int, int, int]] = {
             'critical': (220, 53, 69),
             'high': (220, 16, 46),
             'medium': (255, 193, 7),
@@ -151,38 +154,45 @@ class PDFStyleConfig:
             'primary': (0, 123, 255),
             'secondary': (108, 117, 125)
         }
-        
+
         self.page_numbers = True
         self.headers = True
         self.footers = True
 
 
 class PDFGenerator:
-    def __init__(self):
+    """Generates PDF-style content from audit reports."""
+
+    def __init__(self) -> None:
         self.style = PDFStyleConfig()
         self.sections: List[ReportSection] = []
         self.vulnerabilities: List[VulnerabilityEntry] = []
-    
+
     def generate_report(self, audit_report: AuditReport) -> bytes:
         content = self._generate_content(audit_report)
         return content.encode('utf-8')
-    
+
+    def generate_pdf_bytes(self, audit_report: AuditReport) -> bytes:
+        """Generate report as raw bytes suitable for PDF writing."""
+        content = self._generate_content(audit_report)
+        return content.encode('utf-8')
+
     def _generate_content(self, report: AuditReport) -> str:
-        lines = []
-        
+        lines: List[str] = []
+
         lines.extend(self._generate_title(report))
         lines.extend(self._generate_executive_summary(report))
         lines.extend(self._generate_methodology(report))
         lines.extend(self._generate_findings(report))
         lines.extend(self._generate_statistics(report))
         lines.extend(self._generate_recommendations(report))
-        
+
         return '\n'.join(lines)
-    
+
     def _generate_title(self, report: AuditReport) -> List[str]:
         return [
             "=" * 60,
-            f"SECURITY AUDIT REPORT",
+            "SECURITY AUDIT REPORT",
             "=" * 60,
             "",
             f"Contract: {report.contract_name}",
@@ -192,10 +202,10 @@ class PDFGenerator:
             "=" * 60,
             ""
         ]
-    
+
     def _generate_executive_summary(self, report: AuditReport) -> List[str]:
         counts = report.get_severity_counts()
-        
+
         return [
             "EXECUTIVE SUMMARY",
             "-" * 60,
@@ -209,7 +219,7 @@ class PDFGenerator:
             "-" * 60,
             ""
         ]
-    
+
     def _generate_methodology(self, report: AuditReport) -> List[str]:
         return [
             "METHODOLOGY",
@@ -223,14 +233,14 @@ class PDFGenerator:
             "-" * 60,
             ""
         ]
-    
+
     def _generate_findings(self, report: AuditReport) -> List[str]:
-        lines = [
+        lines: List[str] = [
             "FINDINGS",
             "-" * 60,
             ""
         ]
-        
+
         for vuln in report.vulnerabilities:
             lines.extend([
                 f"[{vuln.severity.value.upper()}] {vuln.title}",
@@ -249,148 +259,277 @@ class PDFGenerator:
                 "-" * 40,
                 ""
             ])
-        
+
         return lines
-    
+
     def _generate_statistics(self, report: AuditReport) -> List[str]:
-        lines = [
+        lines: List[str] = [
             "STATISTICS",
             "-" * 60,
             ""
         ]
-        
+
         for key, value in report.statistics.items():
             lines.append(f"{key}: {value}")
-        
+
         return lines
-    
+
     def _generate_recommendations(self, report: AuditReport) -> List[str]:
-        lines = [
+        lines: List[str] = [
             "RECOMMENDATIONS",
             "-" * 60,
             ""
         ]
-        
+
         critical = [v for v in report.vulnerabilities if v.severity == SeverityLevel.CRITICAL]
         high = [v for v in report.vulnerabilities if v.severity == SeverityLevel.HIGH]
-        
+
         if critical:
             lines.append("CRITICAL PRIORITY:")
             for v in critical:
                 lines.append(f"- {v.recommendation}")
             lines.append("")
-        
+
         if high:
             lines.append("HIGH PRIORITY:")
             for v in high:
                 lines.append(f"- {v.recommendation}")
-        
+
         return lines
-    
+
     def export_to_file(self, report: AuditReport, filepath: str) -> bool:
         try:
             content = self.generate_report(report)
-            
-            with open(filepath, 'w', encoding='utf-8') as f:
+
+            with open(filepath, 'wb') as f:
                 f.write(content)
-            
+
             logger.info(f"Report exported to: {filepath}")
             return True
         except Exception as e:
             logger.error(f"Export failed: {e}")
             return False
 
+    def generate_cover_page(self, report: AuditReport) -> List[str]:
+        date_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(report.audit_date))
+        counts = report.get_severity_counts()
+        total = sum(counts.values())
+        risk = "LOW"
+        if counts.get('critical', 0) > 0:
+            risk = "CRITICAL"
+        elif counts.get('high', 0) > 0:
+            risk = "HIGH"
+        elif counts.get('medium', 0) > 0:
+            risk = "MEDIUM"
 
-class ReportGenerator:
-    def __init__(self):
-        self.pdf_generator = PDFGenerator()
-        self.temp_reports: Dict[str, AuditReport] = {}
-    
-    def create_report(self, contract_name: str, contract_address: str,
-                   vulnerabilities: List[Dict[str, Any]],
-                   statistics: Dict[str, Any]) -> AuditReport:
-        
-        report_id = f"RPT_{hashlib.md5(str(time.time()).encode()).hexdigest()[:8]}"
-        
-        report = AuditReport(
-            report_id=report_id,
-            contract_name=contract_name,
-            contract_address=contract_address,
-            audit_date=time.time()
-        )
-        
-        for vuln_data in vulnerabilities:
-            vuln = VulnerabilityEntry(
-                vuln_id=vuln_data.get('vuln_id', f'VULN_{len(report.vulnerabilities)}'),
-                title=vuln_data.get('title', 'Unknown'),
-                severity=SeverityLevel(vuln_data.get('severity', 'info')),
-                category=vuln_data.get('category', 'unknown'),
-                description=vuln_data.get('description', ''),
-                impact=vuln_data.get('impact', ''),
-                recommendation=vuln_data.get('recommendation', ''),
-                code_snippet=vuln_data.get('code_snippet', ''),
-                line_number=vuln_data.get('line_number', 0),
-                cwe_id=vuln_data.get('cwe_id'),
-                cvss_score=vuln_data.get('cvss_score')
-            )
-            report.add_vulnerability(vuln)
-        
-        report.statistics = statistics
-        
-        self.temp_reports[report_id] = report
-        
-        return report
-    
-    def generate_pdf(self, report: AuditReport) -> bytes:
-        return self.pdf_generator.generate_report(report)
-    
-    def export_pdf(self, report: AuditReport, filepath: str) -> bool:
-        return self.pdf_generator.export_to_file(report, filepath)
-    
-    def get_report_by_id(self, report_id: str) -> Optional[AuditReport]:
-        return self.temp_reports.get(report_id)
+        return [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "╔" + "═" * 58 + "╗",
+            "║" + " " * 58 + "║",
+            "║" + "SECURITY AUDIT REPORT".center(58) + "║",
+            "║" + " " * 58 + "║",
+            "╚" + "═" * 58 + "╝",
+            "",
+            "",
+            f"  Contract Name:     {report.contract_name}",
+            f"  Contract Address:  {report.contract_address}",
+            f"  Audit Date:        {date_str}",
+            f"  Report ID:         {report.report_id}",
+            "",
+            f"  Overall Risk:      {risk}",
+            f"  Total Findings:    {total}",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+        ]
 
+    def generate_table_of_contents(self, report: AuditReport) -> List[str]:
+        lines = [
+            "TABLE OF CONTENTS",
+            "=" * 60,
+            "",
+            "  1. Executive Summary",
+            "  2. Methodology",
+            "  3. Findings Overview",
+        ]
 
-def create_security_report(contract_name: str, contract_address: str,
-                          vulnerabilities: List[Dict[str, Any]],
-                          statistics: Dict[str, Any]) -> Dict[str, Any]:
-    
-    generator = ReportGenerator()
-    
-    report = generator.create_report(contract_name, contract_address, vulnerabilities, statistics)
-    
-    return report.to_dict()
+        vuln_sections = []
+        for idx, vuln in enumerate(report.vulnerabilities, 1):
+            vuln_sections.append(f"  3.{idx} {vuln.title}")
 
+        if vuln_sections:
+            lines.extend(vuln_sections)
 
-if __name__ == '__main__':
-    sample_vulns = [
-        {
-            'title': 'Reentrancy Vulnerability',
-            'severity': 'critical',
-            'category': 'Reentrancy',
-            'description': 'External call before state update',
-            'impact': 'Can lead to fund drain',
-            'recommendation': 'Use ReentrancyGuard',
-            'code_snippet': 'msg.sender.call{value: amount}("")',
-            'line_number': 42
-        },
-        {
-            'title': 'Missing Access Control',
-            'severity': 'high',
-            'category': 'Access Control',
-            'description': 'Function lacks access control',
-            'impact': 'Unauthorized access possible',
-            'recommendation': 'Add onlyOwner modifier',
-            'code_snippet': 'function withdraw() public',
-            'line_number': 15
+        lines.extend([
+            "  4. Detailed Findings",
+        ])
+
+        detail_sections = []
+        for idx, vuln in enumerate(report.vulnerabilities, 1):
+            detail_sections.append(f"  4.{idx} [{vuln.severity.value.upper()}] {vuln.title}")
+
+        if detail_sections:
+            lines.extend(detail_sections)
+
+        lines.extend([
+            "  5. Statistics",
+            "  6. Recommendations",
+            "  7. Appendix",
+            "",
+            "=" * 60,
+            "",
+        ])
+
+        return lines
+
+    def generate_risk_assessment(self, report: AuditReport) -> List[str]:
+        counts = report.get_severity_counts()
+        total = sum(counts.values())
+
+        lines = [
+            "RISK ASSESSMENT",
+            "-" * 60,
+            "",
+        ]
+
+        if total == 0:
+            lines.append("  No vulnerabilities identified.")
+            lines.append("")
+            return lines
+
+        critical = counts.get('critical', 0)
+        high = counts.get('high', 0)
+        medium = counts.get('medium', 0)
+        low = counts.get('low', 0)
+        info = counts.get('info', 0)
+
+        lines.append(f"  Total Findings:  {total}")
+        lines.append("")
+
+        for label, count in [("CRITICAL", critical), ("HIGH", high), ("MEDIUM", medium), ("LOW", low), ("INFO", info)]:
+            if count > 0:
+                pct = (count / total) * 100
+                bar_len = max(1, int(pct / 5))
+                bar = "█" * bar_len + "░" * (20 - bar_len)
+                lines.append(f"  {label:10s}  {bar}  {count:3d}  ({pct:5.1f}%)")
+
+        lines.append("")
+
+        if critical > 0:
+            lines.append("  OVERALL RISK: CRITICAL")
+            lines.append("  Immediate remediation required.")
+        elif high > 0:
+            lines.append("  OVERALL RISK: HIGH")
+            lines.append("  Prompt remediation recommended.")
+        elif medium > 0:
+            lines.append("  OVERALL RISK: MEDIUM")
+            lines.append("  Remediation should be planned.")
+        else:
+            lines.append("  OVERALL RISK: LOW")
+            lines.append("  No critical issues found.")
+
+        lines.append("")
+        lines.append("-" * 60)
+        lines.append("")
+
+        return lines
+
+    def generate_appendix(self, report: AuditReport) -> List[str]:
+        lines = [
+            "APPENDIX",
+            "=" * 60,
+            "",
+        ]
+
+        if report.statistics:
+            lines.append("A. Audit Statistics")
+            lines.append("-" * 40)
+            for key, value in report.statistics.items():
+                lines.append(f"  {key}: {value}")
+            lines.append("")
+
+        if report.metadata:
+            lines.append("B. Report Metadata")
+            lines.append("-" * 40)
+            for key, value in report.metadata.items():
+                lines.append(f"  {key}: {value}")
+            lines.append("")
+
+        lines.append("C. Severity Definitions")
+        lines.append("-" * 40)
+        lines.append("  CRITICAL  - Exploitable with high impact, immediate action required")
+        lines.append("  HIGH      - Significant risk, prompt remediation recommended")
+        lines.append("  MEDIUM    - Moderate risk, should be addressed")
+        lines.append("  LOW       - Minor issue, recommended improvement")
+        lines.append("  INFO      - Informational, no immediate risk")
+        lines.append("")
+
+        lines.append("D. CWE Reference")
+        lines.append("-" * 40)
+        cwe_ids = set()
+        for vuln in report.vulnerabilities:
+            if vuln.cwe_id:
+                cwe_ids.add(vuln.cwe_id)
+        if cwe_ids:
+            for cwe in sorted(cwe_ids):
+                lines.append(f"  {cwe}")
+        else:
+            lines.append("  No CWE references in this report.")
+        lines.append("")
+
+        lines.append("=" * 60)
+
+        return lines
+
+    def generate_full_report(self, report: AuditReport) -> bytes:
+        """Generate a complete report with cover, TOC, and all sections."""
+        lines: List[str] = []
+        lines.extend(self.generate_cover_page(report))
+        lines.extend(self.generate_table_of_contents(report))
+        lines.extend(self._generate_title(report))
+        lines.extend(self._generate_executive_summary(report))
+        lines.extend(self.generate_risk_assessment(report))
+        lines.extend(self._generate_methodology(report))
+        lines.extend(self._generate_findings(report))
+        lines.extend(self._generate_statistics(report))
+        lines.extend(self._generate_recommendations(report))
+        lines.extend(self.generate_appendix(report))
+        content = '\n'.join(lines)
+        return content.encode('utf-8')
+
+    @staticmethod
+    def _get_severity_color_hex(severity: SeverityLevel) -> str:
+        color_map = {
+            SeverityLevel.CRITICAL: '#dc3545',
+            SeverityLevel.HIGH: '#e01020',
+            SeverityLevel.MEDIUM: '#ffc107',
+            SeverityLevel.LOW: '#198754',
+            SeverityLevel.INFO: '#0d6efd',
         }
-    ]
-    
-    stats = {
-        'lines_scanned': 500,
-        'functions_scanned': 20,
-        'execution_time': 2.5
-    }
-    
-    result = create_security_report('TestContract', '0x1234...', sample_vulns, stats)
-    print(json.dumps(result, indent=2))
+        return color_map.get(severity, '#6c757d')
+
+    def format_vulnerability_summary_line(self, vuln: VulnerabilityEntry) -> str:
+        cvss_str = f"CVSS:{vuln.cvss_score:.1f}" if vuln.cvss_score else "N/A"
+        cwe_str = vuln.cwe_id or "N/A"
+        return (
+            f"[{vuln.severity.value.upper():8s}] {vuln.title:<40s} "
+            f"Line:{vuln.line_number:<6d} CVSS:{cvss_str:<8s} CWE:{cwe_str}"
+        )

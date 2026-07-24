@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import html
 from typing import AsyncIterator, Optional, Dict, Any, Callable
 from datetime import datetime
 
@@ -15,6 +16,9 @@ class StreamMixin:
     def __init__(self):
         self._stream_callback: Optional[Callable[[str], None]] = None
         self._enable_stream_logging = True
+        self._stream_rate_limit_hits: int = 0
+        self._stream_total_chunks: int = 0
+        self._stream_total_chars: int = 0
 
     async def stream_generate(
         self,
@@ -89,11 +93,16 @@ def create_stream_handler(provider_name: str):
         """Handle streaming response from any provider"""
         full_response = ""
         chunk_count = 0
+        max_content_chars = 100000
 
         try:
             async for chunk in stream:
                 if isinstance(chunk, bytes):
                     chunk = chunk.decode("utf-8")
+
+                if "rate_limited" in chunk.lower() or "429" in chunk:
+                    logger.warning(f"[{provider_name}] Rate limited during stream")
+                    break
 
                 data = parse_sse_chunk(chunk)
                 if not data:
@@ -104,6 +113,9 @@ def create_stream_handler(provider_name: str):
 
                 content = extract_content_from_response(data)
                 if content:
+                    if len(full_response) + len(content) > max_content_chars:
+                        logger.warning(f"[{provider_name}] Stream exceeded {max_content_chars} chars, truncating")
+                        break
                     full_response += content
                     chunk_count += 1
 
@@ -113,11 +125,18 @@ def create_stream_handler(provider_name: str):
                     if on_chunk:
                         on_chunk(content, chunk_count)
 
+                    if chunk_count > 10000:
+                        logger.warning(f"[{provider_name}] Stream exceeded 10000 chunks, stopping")
+                        break
+
                     if logger.isEnabledFor(logging.DEBUG):
                         logger.debug(
                             f"[{provider_name}] Chunk #{chunk_count}: {content[:50]}..."
                         )
 
+        except asyncio.TimeoutError:
+            logger.error(f"[{provider_name}] Stream timed out")
+            raise
         except Exception as e:
             logger.error(f"[{provider_name}] Stream error: {e}")
             raise

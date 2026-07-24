@@ -120,6 +120,10 @@ class AnthropicProvider:
         try:
             import httpx
 
+            if not self.config.api_key or len(self.config.api_key) < 8:
+                yield '{"error": "Invalid API key"}'
+                return
+
             headers = {
                 "x-api-key": self.config.api_key,
                 "anthropic-version": "2023-06-01",
@@ -128,23 +132,49 @@ class AnthropicProvider:
 
             payload = {
                 "model": self.config.model,
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 1024,
+                "messages": [{"role": "user", "content": prompt[:80000]}],
+                "max_tokens": min(self.config.max_tokens, 4096) if hasattr(self.config, 'max_tokens') else 4096,
                 "stream": True,
             }
 
-            async with httpx.AsyncClient() as client:
+            timeout = getattr(self.config, 'timeout', 60)
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 async with client.stream(
                     "POST",
                     f"{self.config.base_url}/v1/messages",
                     json=payload,
                     headers=headers,
                 ) as resp:
+                    if resp.status_code != 200:
+                        body = await resp.aread()
+                        yield f'{{"error": "HTTP {resp.status_code}: {body.decode()[:200]}"}}'
+                        return
+
                     async for line in resp.aiter_lines():
-                        if line:
-                            yield line
+                        line = line.strip()
+                        if not line:
+                            continue
+                        if line.startswith("data: "):
+                            line = line[6:]
+                        if line == "[DONE]":
+                            break
+                        try:
+                            obj = json.loads(line)
+                            if obj.get("type") == "content_block_delta":
+                                delta = obj.get("delta", {})
+                                text = delta.get("text", "")
+                                if text:
+                                    yield text
+                            elif obj.get("type") == "message_stop":
+                                break
+                        except json.JSONDecodeError:
+                            pass
+        except httpx.TimeoutException:
+            logger.error("Anthropic stream timed out")
+            yield '{"error": "Stream timed out"}'
         except Exception as e:
             logger.error(f"Anthropic stream error: {e}")
+            yield f'{{"error": "{str(e)[:200]}"}}'
 
     def get_statistics(self) -> Dict[str, Any]:
         return {

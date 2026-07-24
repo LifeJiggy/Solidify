@@ -7,12 +7,24 @@ Description: NVIDIA provider with security-focused models for vulnerability dete
 """
 
 import os
+import re
+import json
 import logging
+import html
 from typing import Dict, Any, Optional, List, AsyncIterator
 from dataclasses import dataclass, field
 from enum import Enum
 
 logger = logging.getLogger(__name__)
+
+_BASE_URL_PATTERNS = re.compile(r"^https://[a-zA-Z0-9.-]+(?:/v[12])?$")
+
+
+def sanitize_error(msg: str) -> str:
+    sanitized = html.escape(str(msg))
+    if len(sanitized) > 300:
+        sanitized = sanitized[:300] + "..."
+    return sanitized
 
 
 class NvidiaModel(Enum):
@@ -362,12 +374,30 @@ class NvidiaProvider:
     def __init__(self, config: Optional[NvidiaConfig] = None):
         self.config = config or NvidiaConfig(api_key=os.getenv("NVIDIA_API_KEY", ""))
         self._client = None
+        self._http_pool = None
 
         self.total_requests = 0
         self.failed_requests = 0
         self.rate_limit_hits = 0
+        self.total_stream_chars = 0
+
+        if self.config.model and self.config.model not in MODELS:
+            logger.warning(f"NvidiaProvider: unknown model '{self.config.model}', using default")
+            self.config.model = "nvidia/nvidia-nemotron-nano-9b-v2"
 
         logger.info(f"NvidiaProvider initialized: {self.config.model}")
+
+    async def _get_client(self) -> "httpx.AsyncClient":
+        if self._http_pool is None:
+            import httpx
+            limits = httpx.Limits(max_keepalive_connections=5, max_connections=10)
+            self._http_pool = httpx.AsyncClient(timeout=self.config.timeout, limits=limits)
+        return self._http_pool
+
+    async def close(self):
+        if self._http_pool:
+            await self._http_pool.aclose()
+            self._http_pool = None
 
     async def generate(
         self,
@@ -384,12 +414,22 @@ class NvidiaProvider:
             self.total_requests += 1
 
             model = model or self.config.model
+            if model not in MODELS and model != self.config.model:
+                logger.warning(f"NvidiaProvider.generate: unknown model '{model}', using default")
+                model = self.config.model
+
+            if not self.config.api_key or len(self.config.api_key) < 8:
+                self.failed_requests += 1
+                return NvidiaResponse(content="", model=model, finish_reason="error",
+                                       metadata={"error": "Invalid API key"})
+
             headers = {
                 "Authorization": f"Bearer {self.config.api_key}",
                 "Content-Type": "application/json",
             }
 
-            messages = [{"role": "user", "content": prompt}]
+            safe_prompt = prompt[:80000]
+            messages = [{"role": "user", "content": safe_prompt}]
 
             payload = {
                 "model": model,
@@ -398,42 +438,55 @@ class NvidiaProvider:
             }
 
             if max_tokens:
-                payload["max_tokens"] = max_tokens
+                payload["max_tokens"] = min(max_tokens, 16384)
             elif self.config.max_tokens:
-                payload["max_tokens"] = self.config.max_tokens
+                payload["max_tokens"] = min(self.config.max_tokens, 16384)
 
             payload.update(kwargs)
 
-            async with httpx.AsyncClient(timeout=self.config.timeout) as client:
-                response = await client.post(
-                    f"{self.config.base_url}/chat/completions",
-                    json=payload,
-                    headers=headers,
+            client = await self._get_client()
+            response = await client.post(
+                f"{self.config.base_url}/chat/completions",
+                json=payload,
+                headers=headers,
+            )
+
+            if response.status_code == 429:
+                self.rate_limit_hits += 1
+                logger.warning(f"NVIDIA rate limited after {self.total_requests} requests")
+                return NvidiaResponse(
+                    content="", model=model, finish_reason="rate_limited",
                 )
 
-                if response.status_code == 429:
-                    self.rate_limit_hits += 1
-                    return NvidiaResponse(
-                        content="",
-                        model=model,
-                        finish_reason="rate_limited",
-                    )
+            if response.status_code != 200:
+                self.failed_requests += 1
+                logger.error(f"NVIDIA HTTP {response.status_code}: {response.text[:200]}")
+                return NvidiaResponse(
+                    content="", model=model, finish_reason="error",
+                    metadata={"http_status": response.status_code}
+                )
 
-                data = response.json()
+            data = response.json()
 
-                if "choices" in data and len(data["choices"]) > 0:
-                    return NvidiaResponse(
-                        content=data["choices"][0]["message"]["content"],
-                        model=model,
-                        usage=data.get("usage", {}),
-                        finish_reason=data["choices"][0].get("finish_reason", "stop"),
-                        raw_response=data,
-                    )
-                else:
-                    self.failed_requests += 1
-                    return NvidiaResponse(
-                        content="", model=model, finish_reason="error"
-                    )
+            if "choices" in data and len(data["choices"]) > 0:
+                raw_content = data["choices"][0]["message"]["content"]
+                clean_content = "".join(c for c in raw_content if c >= " " or c in "\n\r\t")
+                return NvidiaResponse(
+                    content=clean_content,
+                    model=model,
+                    usage=data.get("usage", {}),
+                    finish_reason=data["choices"][0].get("finish_reason", "stop"),
+                    raw_response=data,
+                )
+            else:
+                self.failed_requests += 1
+                return NvidiaResponse(
+                    content="", model=model, finish_reason="error"
+                )
+        except httpx.TimeoutException:
+            self.failed_requests += 1
+            logger.error(f"NVIDIA generate timed out after {self.config.timeout}s")
+            return NvidiaResponse(content="", model=model or self.config.model, finish_reason="timeout")
         except Exception as e:
             self.failed_requests += 1
             logger.error(f"NVIDIA generate error: {e}")
@@ -449,6 +502,10 @@ class NvidiaProvider:
         try:
             import httpx
 
+            if not self.config.api_key or len(self.config.api_key) < 8:
+                yield '{"error": "Invalid or missing NVIDIA API key"}'
+                return
+
             headers = {
                 "Authorization": f"Bearer {self.config.api_key}",
                 "Content-Type": "application/json",
@@ -459,7 +516,15 @@ class NvidiaProvider:
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": temperature,
                 "stream": True,
+                "max_tokens": self.config.max_tokens,
             }
+
+            if len(prompt) > 100000:
+                yield '{"error": "Prompt too large (max 100K chars)"}'
+                return
+
+            stream_length = 0
+            max_stream_chars = 50000
 
             async with httpx.AsyncClient(timeout=self.config.timeout) as client:
                 async with client.stream(
@@ -470,17 +535,42 @@ class NvidiaProvider:
                 ) as resp:
                     if resp.status_code != 200:
                         error = resp.text
-                        yield f'{{"error": "{error}"}}'
+                        yield f'{{"error": "HTTP {resp.status_code}: {error[:200]}"}}'
                         return
 
                     async for line in resp.aiter_lines():
+                        line = line.strip()
+                        if not line or line == "data: [DONE]":
+                            break
                         if line.startswith("data: "):
-                            if line.strip() == "data: [DONE]":
-                                break
-                            yield line
+                            raw = line[6:]
+                            try:
+                                obj = json.loads(raw)
+                                choices = obj.get("choices", [])
+                                if not choices:
+                                    continue
+                                delta = choices[0].get("delta", {})
+                                finish = choices[0].get("finish_reason")
+                                if finish == "length":
+                                    logger.warning(f"NVIDIA stream truncated: token limit reached")
+                                content = delta.get("content", "")
+                                reasoning = delta.get("reasoning", "") or delta.get("reasoning_content", "")
+                                text = (reasoning or "") + (content or "")
+                                if text:
+                                    stream_length += len(text)
+                                    if stream_length > max_stream_chars:
+                                        logger.warning(f"NVIDIA stream: {max_stream_chars} char limit reached")
+                                        break
+                                    sanitized = "".join(c for c in text if c >= " " or c in "\n\r\t")
+                                    yield sanitized
+                            except json.JSONDecodeError:
+                                pass
+        except httpx.TimeoutException:
+            logger.error(f"NVIDIA stream timed out after {self.config.timeout}s")
+            yield '{"error": "Provider request timed out"}'
         except Exception as e:
             logger.error(f"NVIDIA stream error: {e}")
-            yield f'{{"error": "{str(e)}"}}'
+            yield f'{{"error": "{sanitize_error(str(e))}"}}'
 
     async def chat(self, messages: List[Dict[str, str]], **kwargs) -> NvidiaResponse:
         """Chat with conversation history"""

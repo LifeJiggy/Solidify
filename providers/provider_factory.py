@@ -54,8 +54,18 @@ class ProviderFactory:
         """Create a provider instance"""
         name = name.lower()
 
+        allowed_providers = {"google", "openai", "anthropic", "ollama", "groq", "qwen", "nvidia", "minimax"}
+        if name not in allowed_providers:
+            logger.error(f"Blocked provider creation: {name}")
+            return None
+
         if name in cls._instance_cache and not kwargs.get("force_new"):
             return cls._instance_cache[name]
+
+        model = kwargs.get("model", "")
+        if model and not isinstance(model, str):
+            logger.error(f"Invalid model parameter type: {type(model).__name__}")
+            return None
 
         provider_class = cls._providers.get(name)
         if not provider_class:

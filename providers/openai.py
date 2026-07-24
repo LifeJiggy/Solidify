@@ -125,6 +125,10 @@ class OpenAIProvider:
         try:
             import httpx
 
+            if not self.config.api_key or len(self.config.api_key) < 8:
+                yield '{"error": "Invalid API key"}'
+                return
+
             headers = {
                 "Authorization": f"Bearer {self.config.api_key}",
                 "Content-Type": "application/json",
@@ -132,9 +136,10 @@ class OpenAIProvider:
 
             payload = {
                 "model": model,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": [{"role": "user", "content": prompt[:80000]}],
                 "temperature": kwargs.get("temperature", self.config.temperature),
                 "stream": True,
+                "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
             }
 
             async with httpx.AsyncClient(timeout=self.config.timeout) as client:
@@ -144,11 +149,35 @@ class OpenAIProvider:
                     json=payload,
                     headers=headers,
                 ) as resp:
+                    if resp.status_code != 200:
+                        body = await resp.aread()
+                        yield f'{{"error": "HTTP {resp.status_code}: {body.decode()[:200]}"}}'
+                        return
+
                     async for line in resp.aiter_lines():
-                        if line:
-                            yield line
+                        line = line.strip()
+                        if not line:
+                            continue
+                        if line.startswith("data: "):
+                            line = line[6:]
+                        if line == "[DONE]":
+                            break
+                        try:
+                            obj = json.loads(line)
+                            choices = obj.get("choices", [])
+                            if choices:
+                                delta = choices[0].get("delta", {})
+                                content = delta.get("content", "")
+                                if content:
+                                    yield content
+                        except json.JSONDecodeError:
+                            pass
+        except httpx.TimeoutException:
+            logger.error("OpenAI stream timed out")
+            yield '{"error": "Stream timed out"}'
         except Exception as e:
             logger.error(f"OpenAI stream error: {e}")
+            yield f'{{"error": "{str(e)[:200]}"}}'
 
     def get_statistics(self) -> Dict[str, Any]:
         return {
