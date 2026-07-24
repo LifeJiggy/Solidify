@@ -469,7 +469,10 @@ class NvidiaProvider:
             data = response.json()
 
             if "choices" in data and len(data["choices"]) > 0:
-                raw_content = data["choices"][0]["message"]["content"]
+                msg = data["choices"][0]["message"]
+                raw_content = msg.get("content") or msg.get("reasoning_content") or msg.get("reasoning") or ""
+                if not raw_content:
+                    raw_content = ""
                 clean_content = "".join(c for c in raw_content if c >= " " or c in "\n\r\t")
                 return NvidiaResponse(
                     content=clean_content,
@@ -503,7 +506,7 @@ class NvidiaProvider:
             import httpx
 
             if not self.config.api_key or len(self.config.api_key) < 8:
-                yield '{"error": "Invalid or missing NVIDIA API key"}'
+                yield "[NVIDIA Error: Invalid API key]"
                 return
 
             headers = {
@@ -513,64 +516,36 @@ class NvidiaProvider:
 
             payload = {
                 "model": model,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": [{"role": "user", "content": prompt[:80000]}],
                 "temperature": temperature,
                 "stream": True,
                 "max_tokens": self.config.max_tokens,
             }
 
-            if len(prompt) > 100000:
-                yield '{"error": "Prompt too large (max 100K chars)"}'
-                return
+            from .streaming import StreamingProcessor
 
-            stream_length = 0
-            max_stream_chars = 50000
+            client = await self._get_client()
+            async with client.stream(
+                "POST",
+                f"{self.config.base_url}/chat/completions",
+                json=payload,
+                headers=headers,
+            ) as resp:
+                if resp.status_code != 200:
+                    body = await resp.aread()
+                    yield f"[NVIDIA Error: HTTP {resp.status_code}]"
+                    return
 
-            async with httpx.AsyncClient(timeout=self.config.timeout) as client:
-                async with client.stream(
-                    "POST",
-                    f"{self.config.base_url}/chat/completions",
-                    json=payload,
-                    headers=headers,
-                ) as resp:
-                    if resp.status_code != 200:
-                        error = resp.text
-                        yield f'{{"error": "HTTP {resp.status_code}: {error[:200]}"}}'
-                        return
+                processor = StreamingProcessor(provider="nvidia")
+                async for content in processor.process_stream_simple(resp.aiter_lines()):
+                    yield content
 
-                    async for line in resp.aiter_lines():
-                        line = line.strip()
-                        if not line or line == "data: [DONE]":
-                            break
-                        if line.startswith("data: "):
-                            raw = line[6:]
-                            try:
-                                obj = json.loads(raw)
-                                choices = obj.get("choices", [])
-                                if not choices:
-                                    continue
-                                delta = choices[0].get("delta", {})
-                                finish = choices[0].get("finish_reason")
-                                if finish == "length":
-                                    logger.warning(f"NVIDIA stream truncated: token limit reached")
-                                content = delta.get("content", "")
-                                reasoning = delta.get("reasoning", "") or delta.get("reasoning_content", "")
-                                text = (reasoning or "") + (content or "")
-                                if text:
-                                    stream_length += len(text)
-                                    if stream_length > max_stream_chars:
-                                        logger.warning(f"NVIDIA stream: {max_stream_chars} char limit reached")
-                                        break
-                                    sanitized = "".join(c for c in text if c >= " " or c in "\n\r\t")
-                                    yield sanitized
-                            except json.JSONDecodeError:
-                                pass
         except httpx.TimeoutException:
             logger.error(f"NVIDIA stream timed out after {self.config.timeout}s")
-            yield '{"error": "Provider request timed out"}'
+            yield "[NVIDIA Error: Stream timed out]"
         except Exception as e:
-            logger.error(f"NVIDIA stream error: {e}")
-            yield f'{{"error": "{sanitize_error(str(e))}"}}'
+            logger.error(f"NVIDIA stream error: {sanitize_error(str(e))}")
+            yield f"[NVIDIA Error: {sanitize_error(str(e))[:100]}]"
 
     async def chat(self, messages: List[Dict[str, str]], **kwargs) -> NvidiaResponse:
         """Chat with conversation history"""
