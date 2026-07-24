@@ -213,11 +213,20 @@ VULNERABILITY_PATTERNS = [
      "check": lambda c: bool(re.search(r"pragma\s+solidity\s+\^", c)),
      "desc": "Floating pragma version (informational)", "fix": "Lock pragma version e.g. 0.8.19"},
     {"id": "MISSING_ZERO_CHECK", "name": "Missing Zero Address Check", "severity": "MEDIUM", "cvss": 5.5,
-     "check": lambda c: "address(" in c and ("constructor" in c.split("\n")[0] if c.split("\n") else False) and "require" not in c.split("{")[0] if "{" in c else False,
+     "check": lambda c: bool(re.search(r"constructor\s*\([^)]*address", c)) and "require" not in c and "revert" not in c,
      "desc": "No zero address validation in constructor args", "fix": "Add require(addr != address(0))"},
     {"id": "GAS_LIMIT_LOOP", "name": "Unbounded Loop", "severity": "MEDIUM", "cvss": 4.8,
      "check": lambda c: bool(re.search(r"for\s*\(.*\.\s*length", c)) and "gasleft()" not in c.lower(),
      "desc": "Unbounded loop could hit gas limit", "fix": "Check gasleft() or limit iterations"},
+    {"id": "UNPROTECTED_INIT", "name": "Unprotected Initializer", "severity": "CRITICAL", "cvss": 9.0,
+     "check": lambda c: bool(re.search(r"function\s+initialize\s*\(", c)) and "initializer" not in c.lower() and "onlyOwner" not in c and "onlyRole" not in c,
+     "desc": "initialize() without access control — proxy can be taken over", "fix": "Add initializer modifier or onlyOwner"},
+    {"id": "HARDCODED_ADDRESS", "name": "Hardcoded Address", "severity": "INFO", "cvss": 2.5,
+     "check": lambda c: bool(re.search(r"0x[a-fA-F0-9]{40}", c)) and "address" in c,
+     "desc": "Hardcoded address in contract source", "fix": "Make address configurable via constructor or setter"},
+    {"id": "DEPRECATED_NOW", "name": "Deprecated `now` Usage", "severity": "INFO", "cvss": 1.0,
+     "check": lambda c: " now " in c or c.startswith("now") or "now;" in c or "now," in c,
+     "desc": "Using deprecated `now` (removed in solc 0.7)", "fix": "Use block.timestamp instead"},
 ]
 
 
@@ -256,6 +265,20 @@ def parse_solidity(code: str) -> Dict[str, Any]:
         vulns.append({"type": "Weak Randomness", "severity": "HIGH", "location": "block.blockhash",
                        "description": "Block hash is predictable for miners", "recommendation": "Use Chainlink VRF",
                        "cvss": 8.5, "vuln_id": "WEAK_RANDOM"})
+
+    if re.search(r"function\s+initialize\s*\([^)]*address[^)]*\)", code) and "initializer" not in code_lower and "onlyOwner" not in code and "require(msg.sender" not in code_lower:
+        if not any(v["vuln_id"] == "UNPROTECTED_INIT" for v in vulns):
+            vulns.append({"type": "Unprotected Initializer", "severity": "CRITICAL", "location": "initialize()",
+                           "description": "initialize() with address param but no access control — proxy takeover risk",
+                           "recommendation": "Add initializer modifier from OpenZeppelin", "cvss": 9.0, "vuln_id": "UNPROTECTED_INIT_FULL"})
+
+    if re.search(r"constructor\s*\([^)]*address\s+\w+", code) and not re.search(r"require\s*\([^)]*address\(0\)", code) and not re.search(r"revert\s", code):
+        if not any(v["vuln_id"] == "MISSING_ZERO_CHECK" for v in vulns):
+            vulns.append({"type": "Missing Zero Address Check", "severity": "MEDIUM", "location": "constructor",
+                           "description": "Constructor accepts address parameter without zero-address validation",
+                           "recommendation": "Add require(addr != address(0)) for each address parameter", "cvss": 5.5, "vuln_id": "MISSING_ZERO_FULL"})
+
+
 
     severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
     vulns.sort(key=lambda x: severity_order.get(x["severity"], 4))
@@ -391,14 +414,36 @@ async def _run_audit(task_id: str):
 
         if provider_instance:
             _push_event(task, "analyzing", 30)
-            prompt = f"""You are Solidify. Analyze this {task['chain']} Solidity code:
+            prompt = f"""You are Solidify, a Solidity security auditor. Analyze this {task['chain']} smart contract code.
 
-```{code}```
+```solidity
+{code}
+```
 
-Check: reentrancy, access control, overflow, unchecked calls, tx.origin, flash loans, oracles, front-running.
+Check for these vulnerability classes:
+- Reentrancy (external calls before state changes)
+- Access Control (missing onlyOwner/require checks on critical functions)
+- Integer Overflow/Underflow (unchecked arithmetic on solc <0.8)
+- Unchecked External Calls (.call() return value not checked)
+- tx.origin usage (phishing risk)
+- Flash Loan Attacks (price oracle manipulation)
+- Oracle Manipulation (using spot price without TWAP)
+- Front-Running (unprotected tx ordering)
+- Selfdestruct/Suicide (break upgradeability)
+- Unsafe Delegatecall (executing arbitrary logic)
+- Weak Randomness (predictable RNG)
+- Unprotected Initializer (proxy pattern takeover)
+- Missing Zero-Address Checks (constructor parameters)
+- Centralization Risk (single owner with critical power)
 
-Return ONLY valid JSON:
-{{"score": 0-10, "vulnerabilities": [{{"type": "", "severity": "", "location": "", "description": "", "recommendation": "", "cvss": 0}}], "summary": ""}}"""
+Return ONLY a valid JSON object — no markdown, no backticks, no explanation.
+Severity must be one of: CRITICAL, HIGH, MEDIUM, LOW, INFO.
+Score 0-10 where 10 = perfectly secure, 0 = critically vulnerable.
+
+Example:
+{{"score": 3.5, "vulnerabilities": [{{"type": "Reentrancy", "severity": "CRITICAL", "location": "withdraw()", "description": "External call before state update allows reentrancy", "recommendation": "Apply checks-effects-interactions pattern", "cvss": 9.1}}], "summary": "Multiple critical vulnerabilities expose user funds."}}
+
+Now analyze the contract above and respond with JSON only:"""
 
             full_response = ""
             try:
@@ -451,8 +496,10 @@ def _validate_report(result: dict) -> dict:
     for v in result["vulnerabilities"]:
         if not isinstance(v.get("type"), str):
             v["type"] = "Unknown"
-        if v.get("severity") not in ("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"):
-            v["severity"] = "INFO"
+        sev = v.get("severity", "").upper()
+        if sev not in ("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"):
+            sev = "INFO"
+        v["severity"] = sev
         if not isinstance(v.get("description"), str):
             v["description"] = ""
         if not isinstance(v.get("recommendation"), str):

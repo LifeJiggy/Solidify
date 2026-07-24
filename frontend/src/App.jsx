@@ -338,6 +338,7 @@ export default function App() {
       <KeyboardShortcuts onAudit={() => handleCommand('audit')} onChat={() => setShowChat(true)} onSettings={() => setShowSettings(true)} />
       <ToastContainer />
       <AutoSaveDraft code={contract} />
+      {loading && <div className="loading-bar" />}
       <div className="app">
         <header>
           <div className="logo">
@@ -470,7 +471,7 @@ export default function App() {
           {loading && status && <StatusBar status={status.status} />}
 
           {(streamOutput || streamProgress || taskRunState) && (
-            <div className="stream-panel">
+            <div className={`stream-panel${report ? ' done' : ''}`}>
               <div className="stream-header">
                 <span className="stream-status">{streamProgress || 'Processing...'}</span>
                 <div className="stream-actions">

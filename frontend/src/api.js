@@ -2,6 +2,27 @@ const API_BASE = 'http://localhost:8000/api';
 const DEFAULT_TIMEOUT = 30000;
 const STREAM_TIMEOUT = 120000;
 
+const VALID_SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
+
+export function validateReport(report) {
+  if (!report || typeof report !== 'object') return null;
+  const score = typeof report.score === 'number' ? Math.max(0, Math.min(10, report.score)) : 5;
+  const summary = typeof report.summary === 'string' ? report.summary : 'Audit completed.';
+  const vulns = Array.isArray(report.vulnerabilities) ? report.vulnerabilities : [];
+  return {
+    score,
+    summary,
+    vulnerabilities: vulns.map(v => ({
+      type: typeof v.type === 'string' ? v.type : 'Unknown',
+      severity: VALID_SEVERITIES.includes((v.severity || '').toUpperCase()) ? v.severity.toUpperCase() : 'INFO',
+      location: typeof v.location === 'string' ? v.location : '',
+      description: typeof v.description === 'string' ? v.description : '',
+      recommendation: typeof v.recommendation === 'string' ? v.recommendation : '',
+      cvss: typeof v.cvss === 'number' ? Math.max(0, Math.min(10, v.cvss)) : 5.0,
+    })),
+  };
+}
+
 class ApiError extends Error {
   constructor(message, status, data) {
     super(message);
@@ -83,7 +104,7 @@ export async function streamAudit(taskId, onChunk, onComplete, onError) {
           if (data.status === 'streaming' && data.chunk) {
             onChunk(data.chunk);
           } else if (data.status === 'completed' && data.result) {
-            onComplete(data.result);
+            onComplete(validateReport(data.result));
             return;
           } else if (data.status === 'failed') {
             onError(data.error || 'Audit failed');
@@ -118,7 +139,7 @@ export async function getAuditStatus(taskId) {
 
 export async function getAuditReport(taskId) {
   const res = await fetchWithTimeout(`${API_BASE}/audit/report/${taskId}`);
-  return res.json();
+  return validateReport(await res.json());
 }
 
 export async function getChains() {
