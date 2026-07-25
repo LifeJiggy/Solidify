@@ -251,45 +251,47 @@ class GoogleProvider:
                     buffer = ""
                     previous_text = ""
 
-                    async for chunk in resp.aiter_text():
-                        buffer += chunk
-                        while "\n" in buffer:
-                            line, buffer = buffer.split("\n", 1)
-                            line = line.strip()
-                            if not line:
-                                continue
+                    async for line in resp.aiter_lines():
+                        line = line.strip()
+                        if not line:
+                            continue
 
-                            if line.startswith("data: "):
-                                line = line[6:]
-                            elif line.startswith("data:"):
-                                line = line[5:]
+                        if line.startswith("data: "):
+                            line = line[6:]
+                        elif line.startswith("data:"):
+                            line = line[5:]
+                        else:
+                            continue
+
+                        line = line.strip()
+                        if not line or line == "[DONE]":
+                            continue
+
+                        try:
+                            data = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+
+                        if isinstance(data, list):
+                            data = data[0] if len(data) > 0 else {}
+
+                        candidates = data.get("candidates") or []
+                        if not candidates:
+                            continue
+
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        current_text = "".join(p.get("text", "") for p in parts if "text" in p)
+                        if not current_text:
+                            continue
+
+                        delta = current_text[len(previous_text):] if len(current_text) > len(previous_text) else current_text
+                        if delta:
+                            previous_text = current_text
+                            # Split large deltas into smaller chunks for real-time feel
+                            if len(delta) > 15:
+                                for i in range(0, len(delta), 15):
+                                    yield delta[i:i+15]
                             else:
-                                continue
-
-                            line = line.strip()
-                            if not line or line == "[DONE]":
-                                continue
-
-                            try:
-                                data = json.loads(line)
-                            except json.JSONDecodeError:
-                                continue
-
-                            if isinstance(data, list):
-                                data = data[0] if len(data) > 0 else {}
-
-                            candidates = data.get("candidates") or []
-                            if not candidates:
-                                continue
-
-                            parts = candidates[0].get("content", {}).get("parts", [])
-                            current_text = "".join(p.get("text", "") for p in parts if "text" in p)
-                            if not current_text:
-                                continue
-
-                            delta = current_text[len(previous_text):] if len(current_text) > len(previous_text) else current_text
-                            if delta:
-                                previous_text = current_text
                                 yield delta
                     return
 

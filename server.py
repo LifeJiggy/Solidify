@@ -480,12 +480,38 @@ Analyze the contract above. Return ONLY the JSON object:"""
                 start_idx = full_response.find("{")
                 end_idx = full_response.rfind("}") + 1
                 if start_idx >= 0 and end_idx > start_idx:
-                    result = json.loads(full_response[start_idx:end_idx])
-                    result = _validate_report(result)
+                    raw_json = full_response[start_idx:end_idx]
+                    result = json.loads(raw_json)
                 else:
                     result = parse_solidity(code)
             except (json.JSONDecodeError, ValueError):
+                logger.warning("AI returned malformed JSON, falling back to static analysis")
                 result = parse_solidity(code)
+            else:
+                result = _validate_report(result)
+
+            # If AI returned very few findings or nothing useful, supplement with static scan
+            static = parse_solidity(code)
+            existing = set(v.get("type", "").lower() for v in result.get("vulnerabilities", []))
+            for sv in static.get("vulnerabilities", []):
+                if sv["type"].lower() not in existing and sv["severity"] in ("CRITICAL", "HIGH"):
+                    result.setdefault("vulnerabilities", []).append(sv)
+                    result["score"] = max(0, result.get("score", 5) - 2.0)
+                    if sv["severity"] == "CRITICAL":
+                        result["score"] = max(0, result["score"] - 1.0)
+            result["score"] = round(min(10, max(0, result.get("score", 5))), 1)
+            crit = sum(1 for v in result.get("vulnerabilities", []) if v["severity"] == "CRITICAL")
+            high = sum(1 for v in result.get("vulnerabilities", []) if v["severity"] == "HIGH")
+            if crit or high:
+                result["summary"] = f"Found {len(result.get('vulnerabilities', []))} vulnerabilities. {crit} CRITICAL, {high} HIGH require attention."
+            else:
+                result["summary"] = f"Found {len(result.get('vulnerabilities', []))} vulnerabilities. Review each item below."
+            result["stats"] = {
+                "critical": crit,
+                "high": high,
+                "medium": sum(1 for v in result.get("vulnerabilities", []) if v["severity"] == "MEDIUM"),
+                "low": sum(1 for v in result.get("vulnerabilities", []) if v["severity"] == "LOW"),
+            }
         else:
             _push_event(task, "scanning", 50)
             await asyncio.sleep(0.5)
@@ -509,7 +535,13 @@ def _validate_report(result: dict) -> dict:
     for v in result["vulnerabilities"]:
         if not isinstance(v.get("type"), str):
             v["type"] = "Unknown"
+        t = v["type"].lower()
         sev = v.get("severity", "").upper()
+        # Overrule AI severity for known critical/high vuln types
+        if any(kw in t for kw in ("reentrancy", "access control", "selfdestruct", "suicide", "initializer", "unprotected init")):
+            sev = "CRITICAL"
+        elif any(kw in t for kw in ("overflow", "underflow", "unchecked call", "delegatecall", "flash loan", "oracle", "weak random", "unbounded loop", "external mint", "phishable")):
+            sev = max(sev, "HIGH", key=lambda x: {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1, "INFO": 0}.get(x, 0))
         if sev not in ("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"):
             sev = "INFO"
         v["severity"] = sev
