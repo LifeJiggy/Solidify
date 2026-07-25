@@ -251,43 +251,63 @@ class GoogleProvider:
                     buffer = ""
                     previous_text = ""
 
-                    async for line in resp.aiter_lines():
-                        line = line.strip()
-                        if not line:
-                            continue
-
-                        if line.startswith("data: "):
-                            line = line[6:]
-                        elif line.startswith("data:"):
-                            line = line[5:]
-                        else:
-                            continue
-
-                        line = line.strip()
-                        if not line or line == "[DONE]":
-                            continue
-
+                    def _extract_delta(block: str):
+                        nonlocal previous_text
+                        lines = block.strip().split("\n")
+                        payload_parts = []
+                        for line in lines:
+                            line = line.strip()
+                            if line.startswith("data: "):
+                                payload_parts.append(line[6:])
+                            elif line.startswith("data:"):
+                                payload_parts.append(line[5:])
+                            elif line and not line.startswith(":"):
+                                payload_parts.append(line)
+                        payload = "".join(payload_parts).strip()
+                        if not payload or payload == "[DONE]":
+                            return None
                         try:
-                            data = json.loads(line)
+                            data = json.loads(payload)
                         except json.JSONDecodeError:
-                            continue
-
+                            return None
                         if isinstance(data, list):
                             data = data[0] if len(data) > 0 else {}
-
                         candidates = data.get("candidates") or []
                         if not candidates:
-                            continue
-
+                            return None
                         parts = candidates[0].get("content", {}).get("parts", [])
                         current_text = "".join(p.get("text", "") for p in parts if "text" in p)
                         if not current_text:
-                            continue
+                            return None
+                        # Handle both accumulated and incremental text from Gemini:
+                        if not previous_text:
+                            delta = current_text
+                        elif current_text.startswith(previous_text):
+                            delta = current_text[len(previous_text):]
+                        elif previous_text.startswith(current_text):
+                            delta = None  # no new content
+                        else:
+                            # Gemini sent incremental text (just new tokens)
+                            delta = current_text
+                        if not delta:
+                            return None
+                        previous_text = current_text if current_text.startswith(previous_text) or not previous_text else (previous_text + current_text)
+                        return delta
 
-                        delta = current_text[len(previous_text):] if len(current_text) > len(previous_text) else current_text
+                    async for raw in resp.aiter_text():
+                        buffer += raw
+                        while "\n\n" in buffer:
+                            block, buffer = buffer.split("\n\n", 1)
+                            delta = _extract_delta(block)
+                            if delta:
+                                if len(delta) > 15:
+                                    for i in range(0, len(delta), 15):
+                                        yield delta[i:i+15]
+                                else:
+                                    yield delta
+                    if buffer.strip():
+                        delta = _extract_delta(buffer)
                         if delta:
-                            previous_text = current_text
-                            # Split large deltas into smaller chunks for real-time feel
                             if len(delta) > 15:
                                 for i in range(0, len(delta), 15):
                                     yield delta[i:i+15]

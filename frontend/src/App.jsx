@@ -96,13 +96,14 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [showBatch, setShowBatch] = useState(false);
   const [version] = useState('1.0.0');
-  const [provider, setProvider] = useState(() => localStorage.getItem('provider') || 'google');
-  const [model, setModel] = useState(() => localStorage.getItem('model') || 'gemini-2.5-flash');
+  const [provider, setProvider] = useState(() => localStorage.getItem('provider') || 'nvidia');
+  const [model, setModel] = useState(() => localStorage.getItem('model') || 'google/gemma-3-27b-it');
   const [sessionId, setSessionId] = useState(() => 'sess-' + Date.now().toString(36));
   const [sessions, setSessions] = useState(() => [{ id: 'sess-default', name: 'Session 1', created: new Date().toLocaleDateString() }]);
   const [providersList] = useState([
     { id: 'google', name: 'Google Gemini', models: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-3.5-flash', 'gemini-3-flash', 'gemini-3-pro'], status: 'active' },
-    { id: 'nvidia', name: 'NVIDIA / Minimax', models: ['minimaxai/minimax-m2.5', 'nvidia/llama-3.1-nemotron-70b'], status: 'active' },
+    { id: 'nvidia', name: 'NVIDIA', models: ['google/gemma-4-27b-it', 'google/gemma-4-9b-it', 'google/gemma-3-27b-it', 'google/gemma-3-12b-it', 'nvidia/llama-3.1-nemotron-70b', 'nvidia/nemotron-4-340b'], status: 'active' },
+    { id: 'minimax', name: 'MiniMax', models: ['minimaxai/minimax-m2.5'], status: 'active' },
     { id: 'openai', name: 'OpenAI GPT', models: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'], status: 'available' },
     { id: 'anthropic', name: 'Anthropic Claude', models: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'], status: 'available' },
     { id: 'qwen', name: 'Qwen', models: ['qwen2.5-coder-32b', 'qwen2.5-coder-7b'], status: 'available' },

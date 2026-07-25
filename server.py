@@ -20,8 +20,8 @@ from pydantic import BaseModel, field_validator
 
 load_dotenv()
 
-DEFAULT_MODEL = os.getenv("SOLIDIFY_MODEL", "gemini-2.5-flash")
-DEFAULT_PROVIDER = os.getenv("SOLIDIFY_PROVIDER", "google")
+DEFAULT_MODEL = os.getenv("SOLIDIFY_MODEL", "google/gemma-3-27b-it")
+DEFAULT_PROVIDER = os.getenv("SOLIDIFY_PROVIDER", "nvidia")
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
 NVIDIA_BASE_URL = os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")

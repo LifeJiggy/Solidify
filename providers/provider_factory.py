@@ -22,6 +22,7 @@ from providers.ollama import OllamaProvider, create_ollama_provider
 from providers.groq import GroqProvider, create_groq_provider
 from providers.qwen import QwenProvider, create_qwen_provider
 from providers.nvidia import NvidiaProvider, create_nvidia_provider
+from providers.minimax import MiniMaxProvider, create_minimax_provider
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ class ProviderFactory:
         "groq": GroqProvider,
         "qwen": QwenProvider,
         "nvidia": NvidiaProvider,
+        "minimax": MiniMaxProvider,
     }
 
     _instance_cache: Dict[str, Any] = {}
@@ -87,6 +89,8 @@ class ProviderFactory:
                 instance = create_qwen_provider(**kwargs)
             elif name == "nvidia":
                 instance = create_nvidia_provider(**kwargs)
+            elif name == "minimax":
+                instance = create_minimax_provider(**kwargs)
             else:
                 instance = provider_class(**kwargs)
 
