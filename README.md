@@ -78,6 +78,7 @@ Switch providers in Settings. Set the corresponding environment variable before 
 
 | Provider | Env Variable | Models |
 |----------|-------------|--------|
+| Google | `GEMINI_API_KEY` | Gemini 2.5 Flash, 2.5 Pro, 3.5 Flash |
 | NVIDIA | `NVIDIA_API_KEY` | Nemotron-3 Ultra, Nemotron 70B, Llama 4 Maverick, Gemma 4, Qwen3, DeepSeek V4, Mistral Large 3, and 25+ more |
 | OpenAI | `OPENAI_API_KEY` | GPT-4o, GPT-4-turbo, GPT-3.5-turbo |
 | Anthropic | `ANTHROPIC_API_KEY` | Claude 3 Opus, Sonnet, Haiku |
@@ -163,7 +164,8 @@ Frontend (React + Vite)              Backend (FastAPI + Python)
 
 ```bash
 # AI Provider Keys
-NVIDIA_API_KEY=your_key_here        # Default provider
+GEMINI_API_KEY=your_key_here        # Default provider (Google Gemini)
+NVIDIA_API_KEY=your_key_here
 OPENAI_API_KEY=your_key_here
 ANTHROPIC_API_KEY=your_key_here
 QWEN_API_KEY=your_key_here

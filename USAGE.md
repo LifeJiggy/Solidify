@@ -21,6 +21,7 @@ Starts on `http://localhost:8000`. Set your API key as an environment variable b
 
 | Provider | Env Variable | Default Model |
 |----------|-------------|---------------|
+| Google | `GEMINI_API_KEY` | `gemini-2.5-flash` |
 | NVIDIA | `NVIDIA_API_KEY` | `nvidia/nvidia-nemotron-nano-9b-v2` |
 | OpenAI | `OPENAI_API_KEY` | `gpt-4o` |
 | Anthropic | `ANTHROPIC_API_KEY` | `claude-3-opus` |
@@ -56,6 +57,7 @@ Opens at `http://localhost:5173`.
 
 Switch providers and models in Settings (top-right):
 
+- **Google Gemini** — Gemini 2.5 Flash / 2.5 Pro / 3.5 Flash (default)
 - **NVIDIA** — Nemotron / Llama / Gemma / Qwen models
 - **OpenAI** — GPT-4o / GPT-4-turbo
 - **Anthropic** — Claude 3 Opus / Sonnet / Haiku
