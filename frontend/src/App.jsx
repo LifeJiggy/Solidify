@@ -272,13 +272,27 @@ export default function App() {
     try {
       const pocs = await getPoc(taskId);
       if (pocs.pocs?.length > 0) {
-        const blob = new Blob([pocs.pocs.map(p => p.exploit_code).join('\n\n')], { type: 'text/plain' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'exploits-' + Date.now() + '.sol';
-        a.click();
-        URL.revokeObjectURL(a.href);
-        showToast(`${pocs.pocs.length} exploit(s) downloaded`, 'success');
+        const files = [];
+        for (const p of pocs.pocs) {
+          const vulnId = p.vulnerability.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+          files.push({ name: `hardhat/test/${vulnId}_poc.js`, content: p.hardhat_test });
+          files.push({ name: `hardhat/contracts/Vulnerable${vulnId}.sol`, content: p.vulnerable_contract });
+          for (let i = 0; i < (p.extra_contracts || []).length; i++) {
+            if (p.extra_contracts[i]) {
+              files.push({ name: `hardhat/contracts/Extra${vulnId}_${i}.sol`, content: p.extra_contracts[i] });
+            }
+          }
+        }
+        // Download each file individually
+        for (const f of files) {
+          const blob = new Blob([f.content], { type: 'text/plain' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = f.name;
+          a.click();
+          URL.revokeObjectURL(a.href);
+        }
+        showToast(`${pocs.pocs.length} PoC files downloaded — place in hardhat/ and run: npx hardhat test`, 'success');
       } else {
         showToast('No critical vulnerabilities for PoC generation', 'info');
       }

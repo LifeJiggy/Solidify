@@ -205,7 +205,7 @@ class GoogleProvider:
         )
 
     async def generate_stream(self, prompt: str, **kwargs) -> AsyncIterator[str]:
-        """Generate streaming response"""
+        """Generate streaming response from Gemini's streamGenerateContent (SSE)."""
         import httpx as _httpx
 
         model = kwargs.get("model") or self.config.model
@@ -217,7 +217,7 @@ class GoogleProvider:
         for attempt in range(self.config.max_retries):
             try:
                 client = await self._get_client()
-                url = f"{GEMINI_BASE_URL}/models/{model}:streamGenerateContent?key={self.config.api_key}"
+                url = f"{GEMINI_BASE_URL}/models/{model}:streamGenerateContent?key={self.config.api_key}&alt=sse"
 
                 payload = {
                     "contents": [{"parts": [{"text": prompt[:90000]}]}],
@@ -228,16 +228,29 @@ class GoogleProvider:
                 }
 
                 async with client.stream("POST", url, json=payload) as resp:
+                    if resp.status_code == 429:
+                        self.rate_limit_hits += 1
+                        wait = self.config.retry_delay * (attempt + 1)
+                        await asyncio.sleep(wait)
+                        continue
+
                     if resp.status_code in (502, 503, 504):
                         wait = self.config.retry_delay * (attempt + 1)
                         await asyncio.sleep(wait)
                         continue
 
                     if resp.status_code != 200:
-                        yield f"[Google Error: HTTP {resp.status_code}]"
+                        try:
+                            err_body = await resp.aread()
+                            err_text = err_body.decode("utf-8", errors="replace")[:300]
+                        except Exception:
+                            err_text = ""
+                        yield f"[Google Error: HTTP {resp.status_code} {err_text[:120]}]"
                         return
 
                     buffer = ""
+                    previous_text = ""
+
                     async for chunk in resp.aiter_text():
                         buffer += chunk
                         while "\n" in buffer:
@@ -245,16 +258,39 @@ class GoogleProvider:
                             line = line.strip()
                             if not line:
                                 continue
+
+                            if line.startswith("data: "):
+                                line = line[6:]
+                            elif line.startswith("data:"):
+                                line = line[5:]
+                            else:
+                                continue
+
+                            line = line.strip()
+                            if not line or line == "[DONE]":
+                                continue
+
                             try:
-                                obj = json.loads(line)
-                                candidates = obj.get("candidates", [])
-                                if candidates:
-                                    parts = candidates[0].get("content", {}).get("parts", [])
-                                    for p in parts:
-                                        if "text" in p:
-                                            yield p["text"]
+                                data = json.loads(line)
                             except json.JSONDecodeError:
                                 continue
+
+                            if isinstance(data, list):
+                                data = data[0] if len(data) > 0 else {}
+
+                            candidates = data.get("candidates") or []
+                            if not candidates:
+                                continue
+
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            current_text = "".join(p.get("text", "") for p in parts if "text" in p)
+                            if not current_text:
+                                continue
+
+                            delta = current_text[len(previous_text):] if len(current_text) > len(previous_text) else current_text
+                            if delta:
+                                previous_text = current_text
+                                yield delta
                     return
 
             except _httpx.TimeoutException:
