@@ -104,16 +104,8 @@ def scan_code(code: str) -> Dict[str, Any]:
     }
 
 
-async def ai_audit(code: str, model: str = "nvidia/nvidia-nemotron-nano-9b-v2") -> Optional[Dict]:
+async def ai_audit(code: str, model: str = "nvidia/nvidia-nemotron-nano-9b-v2", provider_name: str = "nvidia") -> Optional[Dict]:
     try:
-        from providers.nvidia import NvidiaProvider, NvidiaConfig
-        api_key = os.getenv("NVIDIA_API_KEY", "")
-        if not api_key:
-            return None
-
-        config = NvidiaConfig(api_key=api_key, model=model, max_tokens=16384, temperature=0.3)
-        provider = NvidiaProvider(config)
-
         prompt = f"""Analyze this Solidity contract for security vulnerabilities. Return ONLY valid JSON.
 
 ```solidity
@@ -124,6 +116,23 @@ Return JSON with this exact structure:
 {{"score": 0-10, "vulnerabilities": [{{"type": "", "severity": "CRITICAL/HIGH/MEDIUM/LOW", "location": "", "description": "", "recommendation": "", "cvss": 0.0}}], "summary": ""}}
 
 Check for: reentrancy, access control, overflow, unchecked calls, tx.origin, delegatecall, flash loans, oracles."""
+
+        if provider_name == "google":
+            from providers.google import GoogleProvider, GoogleConfig
+            api_key = os.getenv("GEMINI_API_KEY", "")
+            if not api_key:
+                logger.warning("No GEMINI_API_KEY found")
+                return None
+            config = GoogleConfig(api_key=api_key, model=model, max_tokens=8192, temperature=0.3)
+            provider = GoogleProvider(config)
+        else:
+            from providers.nvidia import NvidiaProvider, NvidiaConfig
+            api_key = os.getenv("NVIDIA_API_KEY", "")
+            if not api_key:
+                logger.warning("No NVIDIA_API_KEY found")
+                return None
+            config = NvidiaConfig(api_key=api_key, model=model, max_tokens=16384, temperature=0.3)
+            provider = NvidiaProvider(config)
 
         result = await provider.generate(prompt)
         await provider.close()
@@ -283,16 +292,24 @@ def cmd_audit(args):
         print("Error: Provide --file or --address")
         return 1
 
+    provider_name = args.provider or "nvidia"
+    model = args.model
+    if not model:
+        if provider_name == "google":
+            model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        else:
+            model = os.getenv("SOLIDIFY_MODEL", "nvidia/nvidia-nemotron-nano-9b-v2")
+
     print(f"Auditing: {source}")
     print(f"Code size: {len(code)} bytes")
+    print(f"Provider: {provider_name} / {model}")
     print()
 
     print("[1/2] Running pattern scanner...")
     scan_result = scan_code(code)
 
     print("[2/2] Running AI analysis...")
-    model = args.model or os.getenv("SOLIDIFY_MODEL", "nvidia/nvidia-nemotron-nano-9b-v2")
-    ai_result = asyncio.run(ai_audit(code, model))
+    ai_result = asyncio.run(ai_audit(code, model, provider_name))
 
     if ai_result and ai_result.get("vulnerabilities"):
         ai_vulns = ai_result.get("vulnerabilities", [])
@@ -343,6 +360,7 @@ def main():
     audit_p.add_argument("--address", "-a", help="Contract address")
     audit_p.add_argument("--chain", default="ethereum", help="Chain")
     audit_p.add_argument("--model", "-m", help="AI model to use")
+    audit_p.add_argument("--provider", "-p", choices=["nvidia", "google"], default="nvidia", help="AI provider")
     audit_p.add_argument("--output", "-o", help="Save report to file")
 
     serve_p = sub.add_parser("serve", help="Start API server")

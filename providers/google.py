@@ -1,42 +1,42 @@
 """
 Solidify Google Provider
-Google Gemini API integration
+Google Gemini REST API integration (no SDK dependency)
 
-Author: Peace Stephen (Tech Lead)
-Description: Google Gemini provider for AI-powered analysis
+Author: Solidify Security Team
+Description: Google Gemini provider using direct REST API calls
 """
 
 import os
+import json
+import time
 import logging
+import asyncio
 from typing import Dict, Any, Optional, List, AsyncIterator
 from dataclasses import dataclass, field
 from enum import Enum
 
 logger = logging.getLogger(__name__)
 
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
+
 
 class GoogleModel(Enum):
+    GEMINI_2_5_PRO = "gemini-2.5-pro"
+    GEMINI_2_5_FLASH = "gemini-2.5-flash"
     GEMINI_3_5_FLASH = "gemini-3.5-flash"
     GEMINI_3_FLASH = "gemini-3-flash"
     GEMINI_3_PRO = "gemini-3-pro"
-    GEMINI_3_1_PRO = "gemini-3.1-pro"
-    GEMINI_3_1_PRO_PREVIEW = "gemini-3.1-pro-preview"
-    GEMINI_2_5_PRO = "gemini-2.5-pro"
-    GEMINI_2_5_FLASH = "gemini-2.5-flash"
-    GEMINI_2_5_FLASH_LITE = "gemini-2.5-flash-lite"
-    GEMMA_3_12B = "gemma-3-12b-it"
 
 
 @dataclass
 class GoogleConfig:
     api_key: str
     model: str = "gemini-2.5-flash"
-    temperature: float = 0.7
+    temperature: float = 0.3
     max_tokens: int = 8192
-    top_p: float = 0.95
-    top_k: int = 40
-    timeout: int = 120
+    timeout: int = 180
     max_retries: int = 3
+    retry_delay: float = 2.0
 
 
 @dataclass
@@ -49,133 +49,240 @@ class GoogleResponse:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
+MODELS = {
+    "gemini-2.5-pro": {
+        "name": "Gemini 2.5 Pro",
+        "context_window": 1048576,
+        "description": "Deep reasoning, comprehensive audit",
+    },
+    "gemini-2.5-flash": {
+        "name": "Gemini 2.5 Flash",
+        "context_window": 1048576,
+        "description": "Fast + accurate balanced",
+    },
+    "gemini-3.5-flash": {
+        "name": "Gemini 3.5 Flash",
+        "context_window": 1048576,
+        "description": "Agentic multi-step analysis",
+    },
+    "gemini-3-flash": {
+        "name": "Gemini 3 Flash",
+        "context_window": 1048576,
+        "description": "Fast inference",
+    },
+    "gemini-3-pro": {
+        "name": "Gemini 3 Pro",
+        "context_window": 1048576,
+        "description": "Advanced reasoning",
+    },
+}
+
+
 class GoogleProvider:
-    """Google Gemini provider"""
+    """Google Gemini provider using REST API"""
 
     def __init__(self, config: Optional[GoogleConfig] = None):
         self.config = config or GoogleConfig(api_key=os.getenv("GEMINI_API_KEY", ""))
-        self._client = None
-        self._initialize()
+        self._http_pool = None
 
         self.total_requests = 0
         self.failed_requests = 0
-        self.total_tokens = 0
+        self.rate_limit_hits = 0
 
         logger.info(f"GoogleProvider initialized: {self.config.model}")
 
-    def _initialize(self) -> None:
-        """Initialize the Google Gemini client"""
-        try:
-            import google.generativeai as genai
+    async def _get_client(self):
+        if self._http_pool is None:
+            import httpx
+            limits = httpx.Limits(max_keepalive_connections=5, max_connections=10)
+            self._http_pool = httpx.AsyncClient(timeout=self.config.timeout, limits=limits)
+        return self._http_pool
 
-            genai.configure(api_key=self.config.api_key)
-            self._client = genai.GenerativeModel(self.config.model)
-            logger.info(f"Google Gemini client ready: {self.config.model}")
-        except Exception as e:
-            logger.error(f"Failed to initialize Google client: {e}")
-            self._client = None
+    async def close(self):
+        if self._http_pool:
+            await self._http_pool.aclose()
+            self._http_pool = None
 
     async def generate(
         self,
         prompt: str,
+        model: Optional[str] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        **kwargs,
     ) -> GoogleResponse:
-        """Generate response from prompt"""
-        if not self._client:
-            return GoogleResponse(
-                content="",
-                model=self.config.model,
-                usage={},
-                finish_reason="error",
-                metadata={"error": "Client not initialized"},
-            )
+        """Generate response from prompt with retry"""
+        import httpx as _httpx
 
-        try:
-            self.total_requests += 1
+        self.total_requests += 1
+        model = model or self.config.model
 
-            generation_config = {
-                "temperature": temperature or self.config.temperature,
-                "max_output_tokens": max_tokens or self.config.max_tokens,
-                "top_p": self.config.top_p,
-                "top_k": self.config.top_k,
-            }
-
-            response = await self._client.generate_content_async(
-                prompt, generation_config=generation_config
-            )
-
-            self.total_tokens += (
-                response.usage.total_token_count if hasattr(response, "usage") else 0
-            )
-
-            return GoogleResponse(
-                content=response.text,
-                model=self.config.model,
-                usage=(
-                    {"total": response.usage.total_token_count}
-                    if hasattr(response, "usage")
-                    else {}
-                ),
-                finish_reason="stop",
-            )
-        except Exception as e:
+        if not self.config.api_key:
             self.failed_requests += 1
-            logger.error(f"Google generate error: {e}")
-            return GoogleResponse(
-                content="",
-                model=self.config.model,
-                usage={},
-                finish_reason="error",
-                metadata={"error": str(e)},
-            )
+            return GoogleResponse(content="", model=model, finish_reason="error",
+                                   metadata={"error": "No API key"})
 
-    async def generate_stream(self, prompt: str) -> AsyncIterator[str]:
+        last_error = ""
+        for attempt in range(self.config.max_retries):
+            try:
+                client = await self._get_client()
+                url = f"{GEMINI_BASE_URL}/models/{model}:generateContent?key={self.config.api_key}"
+
+                payload = {
+                    "contents": [{"parts": [{"text": prompt[:90000]}]}],
+                    "generationConfig": {
+                        "temperature": temperature or self.config.temperature,
+                        "maxOutputTokens": min(max_tokens or self.config.max_tokens, 8192),
+                    },
+                }
+
+                response = await client.post(url, json=payload)
+
+                if response.status_code == 429:
+                    self.rate_limit_hits += 1
+                    wait = self.config.retry_delay * (attempt + 1)
+                    logger.warning(f"Gemini rate limited, retry {attempt+1} in {wait}s")
+                    await asyncio.sleep(wait)
+                    continue
+
+                if response.status_code in (502, 503, 504):
+                    wait = self.config.retry_delay * (attempt + 1)
+                    logger.warning(f"Gemini HTTP {response.status_code}, retry {attempt+1} in {wait}s")
+                    await asyncio.sleep(wait)
+                    last_error = f"HTTP {response.status_code}"
+                    continue
+
+                if response.status_code != 200:
+                    self.failed_requests += 1
+                    error_body = response.text[:300]
+                    logger.error(f"Gemini HTTP {response.status_code}: {error_body}")
+                    return GoogleResponse(
+                        content="", model=model, finish_reason="error",
+                        metadata={"http_status": response.status_code, "error": error_body}
+                    )
+
+                data = response.json()
+                candidates = data.get("candidates", [])
+
+                if candidates and len(candidates) > 0:
+                    content_parts = candidates[0].get("content", {}).get("parts", [])
+                    text = "".join(p.get("text", "") for p in content_parts)
+                    clean = "".join(c for c in text if c >= " " or c in "\n\r\t")
+
+                    usage = data.get("usageMetadata", {})
+
+                    return GoogleResponse(
+                        content=clean,
+                        model=model,
+                        usage={
+                            "prompt_tokens": usage.get("promptTokenCount", 0),
+                            "completion_tokens": usage.get("candidatesTokenCount", 0),
+                            "total_tokens": usage.get("totalTokenCount", 0),
+                        },
+                        finish_reason=candidates[0].get("finishReason", "STOP"),
+                        raw_response=data,
+                    )
+                else:
+                    self.failed_requests += 1
+                    return GoogleResponse(
+                        content="", model=model, finish_reason="error",
+                        metadata={"error": "No candidates in response"}
+                    )
+
+            except _httpx.TimeoutException:
+                logger.warning(f"Gemini timeout on attempt {attempt+1}")
+                last_error = "timeout"
+                continue
+            except Exception as e:
+                logger.error(f"Gemini error on attempt {attempt+1}: {e}")
+                last_error = str(e)
+                continue
+
+        self.failed_requests += 1
+        return GoogleResponse(
+            content="", model=model, finish_reason="error",
+            metadata={"error": f"All {self.config.max_retries} retries failed: {last_error}"}
+        )
+
+    async def generate_stream(self, prompt: str, **kwargs) -> AsyncIterator[str]:
         """Generate streaming response"""
-        if not self._client:
-            yield "[Google Error: Client not initialized]"
+        import httpx as _httpx
+
+        model = kwargs.get("model") or self.config.model
+
+        if not self.config.api_key:
+            yield "[Google Error: No API key]"
             return
 
-        try:
-            from .streaming import StreamingProcessor
+        for attempt in range(self.config.max_retries):
+            try:
+                client = await self._get_client()
+                url = f"{GEMINI_BASE_URL}/models/{model}:streamGenerateContent?key={self.config.api_key}"
 
-            safe_prompt = prompt[:80000]
-            raw_stream = _google_raw_stream(self._client, safe_prompt)
-            processor = StreamingProcessor(provider="google")
-            async for content in processor.process_stream_simple(raw_stream):
-                yield content
+                payload = {
+                    "contents": [{"parts": [{"text": prompt[:90000]}]}],
+                    "generationConfig": {
+                        "temperature": kwargs.get("temperature", self.config.temperature),
+                        "maxOutputTokens": min(self.config.max_tokens, 8192),
+                    },
+                }
 
-        except Exception as e:
-            logger.error(f"Google stream error: {e}")
-            yield f"[Google Error: {str(e)[:100]}]"
+                async with client.stream("POST", url, json=payload) as resp:
+                    if resp.status_code in (502, 503, 504):
+                        wait = self.config.retry_delay * (attempt + 1)
+                        await asyncio.sleep(wait)
+                        continue
 
+                    if resp.status_code != 200:
+                        yield f"[Google Error: HTTP {resp.status_code}]"
+                        return
 
-async def _google_raw_stream(client, prompt: str) -> AsyncIterator[str]:
-    response = client.generate_content_async(prompt, stream=True)
-    async for chunk in response:
-        if chunk and hasattr(chunk, "text") and chunk.text:
-            yield chunk.text
+                    buffer = ""
+                    async for chunk in resp.aiter_text():
+                        buffer += chunk
+                        while "\n" in buffer:
+                            line, buffer = buffer.split("\n", 1)
+                            line = line.strip()
+                            if not line:
+                                continue
+                            try:
+                                obj = json.loads(line)
+                                candidates = obj.get("candidates", [])
+                                if candidates:
+                                    parts = candidates[0].get("content", {}).get("parts", [])
+                                    for p in parts:
+                                        if "text" in p:
+                                            yield p["text"]
+                            except json.JSONDecodeError:
+                                continue
+                    return
 
-    async def chat(self, messages: List[Dict[str, str]]) -> GoogleResponse:
+            except _httpx.TimeoutException:
+                logger.warning(f"Gemini stream timeout on attempt {attempt+1}")
+                continue
+            except Exception as e:
+                yield f"[Google Error: {str(e)[:100]}]"
+                return
+
+        yield "[Google Error: All retries failed]"
+
+    async def chat(self, messages: List[Dict[str, str]], **kwargs) -> GoogleResponse:
         """Chat with conversation history"""
         prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
-        return await self.generate(prompt)
+        return await self.generate(prompt, **kwargs)
 
     def get_statistics(self) -> Dict[str, Any]:
-        """Get provider statistics"""
         return {
             "provider": "google",
             "model": self.config.model,
             "total_requests": self.total_requests,
             "failed_requests": self.failed_requests,
-            "success_rate": (self.total_requests - self.failed_requests)
-            / max(self.total_requests, 1),
-            "total_tokens": self.total_tokens,
+            "rate_limit_hits": self.rate_limit_hits,
+            "success_rate": (self.total_requests - self.failed_requests) / max(self.total_requests, 1),
         }
 
     def is_available(self) -> bool:
-        """Check if provider is available"""
-        return self._client is not None
+        return bool(self.config.api_key)
 
 
 def create_google_provider(
@@ -183,44 +290,17 @@ def create_google_provider(
     model: str = "gemini-2.5-flash",
     **kwargs,
 ) -> GoogleProvider:
-    """Factory function to create Google provider"""
     config = GoogleConfig(
         api_key=api_key or os.getenv("GEMINI_API_KEY", ""),
         model=model,
-        **{
-            k: v
-            for k, v in kwargs.items()
-            if k in ["temperature", "max_tokens", "top_p", "top_k"]
-        },
+        **{k: v for k, v in kwargs.items() if k in ["temperature", "max_tokens", "timeout"]},
     )
     return GoogleProvider(config)
 
 
 def list_available_models() -> List[str]:
-    """List available Google models"""
-    return [m.value for m in GoogleModel]
+    return list(MODELS.keys())
 
 
 def get_model_info(model: str) -> Dict[str, Any]:
-    """Get model information"""
-    model_info = {
-        "gemini-3.5-flash": {
-            "name": "Gemini 3.5 Flash",
-            "description": "Latest agentic model (May 2026)",
-            "context_window": 1048576,
-            "supports_vision": True,
-        },
-        "gemini-2.5-pro": {
-            "name": "Gemini 2.5 Pro",
-            "description": "Mature reasoning and coding, 1M context",
-            "context_window": 1048576,
-            "supports_vision": True,
-        },
-        "gemini-2.5-flash": {
-            "name": "Gemini 2.5 Flash",
-            "description": "Balanced cost/performance",
-            "context_window": 1048576,
-            "supports_vision": True,
-        },
-    }
-    return model_info.get(model, {"name": model, "description": "Unknown"})
+    return MODELS.get(model, {"name": model, "description": "Unknown"})
