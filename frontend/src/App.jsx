@@ -96,14 +96,22 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [showBatch, setShowBatch] = useState(false);
   const [version] = useState('1.0.0');
-  const [provider, setProvider] = useState(() => localStorage.getItem('provider') || 'nvidia');
-  const [model, setModel] = useState(() => localStorage.getItem('model') || 'google/gemma-3-27b-it');
+  const [provider, setProvider] = useState(() => {
+    const saved = localStorage.getItem('provider');
+    return (saved && ['google','nvidia','openai','anthropic','qwen','ollama','groq'].includes(saved)) ? saved : 'nvidia';
+  });
+  const [model, setModel] = useState(() => {
+    const saved = localStorage.getItem('model');
+    const p = localStorage.getItem('provider') || 'nvidia';
+    const valid = { nvidia: ['google/gemma-4-27b-it','google/gemma-4-9b-it','google/gemma-3-27b-it','google/gemma-3-12b-it','nvidia/llama-3.1-nemotron-70b','nvidia/nemotron-4-340b'], google: ['gemini-2.5-flash','gemini-2.5-pro','gemini-3.5-flash','gemini-3-flash','gemini-3-pro'], openai: ['gpt-4o','gpt-4-turbo','gpt-3.5-turbo'], anthropic: ['claude-3-opus','claude-3-sonnet','claude-3-haiku'], qwen: ['qwen2.5-coder-32b','qwen2.5-coder-7b'], ollama: ['llama3','codellama','mistral'], groq: ['llama3-70b-8192','mixtral-8x7b-32768'] };
+    if (saved && valid[p]?.includes(saved)) return saved;
+    return 'google/gemma-3-27b-it';
+  });
   const [sessionId, setSessionId] = useState(() => 'sess-' + Date.now().toString(36));
   const [sessions, setSessions] = useState(() => [{ id: 'sess-default', name: 'Session 1', created: new Date().toLocaleDateString() }]);
   const [providersList] = useState([
     { id: 'google', name: 'Google Gemini', models: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-3.5-flash', 'gemini-3-flash', 'gemini-3-pro'], status: 'active' },
-    { id: 'nvidia', name: 'NVIDIA', models: ['google/gemma-4-27b-it', 'google/gemma-4-9b-it', 'google/gemma-3-27b-it', 'google/gemma-3-12b-it', 'nvidia/llama-3.1-nemotron-70b', 'nvidia/nemotron-4-340b'], status: 'active' },
-    { id: 'minimax', name: 'MiniMax', models: ['minimaxai/minimax-m2.5'], status: 'active' },
+    { id: 'nvidia', name: 'NVIDIA', models: ['google/gemma-4-27b-it', 'google/gemma-4-9b-it', 'google/gemma-3-27b-it', 'google/gemma-3-12b-it', 'google/gemma-3-4b-it', 'nvidia/llama-3.1-nemotron-70b', 'nvidia/nemotron-4-340b'], status: 'active' },
     { id: 'openai', name: 'OpenAI GPT', models: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'], status: 'available' },
     { id: 'anthropic', name: 'Anthropic Claude', models: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'], status: 'available' },
     { id: 'qwen', name: 'Qwen', models: ['qwen2.5-coder-32b', 'qwen2.5-coder-7b'], status: 'available' },
