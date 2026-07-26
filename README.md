@@ -14,7 +14,7 @@ Part of the TCP (The Coding Peace) ecosystem — Ghost hunts Web2, Solidify hunt
 - **Stop / Pause / Resume** — full control over long-running audits
 - **Structured audit report** — severity counts, expandable vuln cards, CVSS scores
 - **14+ vulnerability classes** — reentrancy, access control, overflow, unchecked calls, flash loans, oracle manipulation, front-running, selfdestruct, delegatecall, weak randomness, unprotected initializers, zero-address checks, centralization risk, and more
-- **Multi-provider AI** — NVIDIA, OpenAI, Anthropic, Qwen, Groq, Ollama
+- **Multi-provider AI** — NVIDIA (Gemma 3/4, Llama, Nemotron), OpenAI, Anthropic, Qwen, Groq, Ollama
 - **Chat with AI** — ask security questions in plain English
 - **Export** — JSON, Markdown, HTML report formats
 - **Static scanner fallback** — works even without an API key
@@ -76,17 +76,17 @@ The server uses Server-Sent Events (SSE) to push status events and content chunk
 
 Switch providers in Settings. Set the corresponding environment variable before starting the server:
 
-| Provider | Env Variable | Models |
-|----------|-------------|--------|
+| Provider | Env Variable | Default Models |
+|----------|-------------|----------------|
+| **NVIDIA** ⭐ | `NVIDIA_API_KEY` | **Google Gemma 4-27B**, Gemma 4-9B, Gemma 3-27B, Gemma 3-12B, Llama 3.1 Nemotron 70B, Nemotron 4-340B |
 | Google | `GEMINI_API_KEY` | Gemini 2.5 Flash, 2.5 Pro, 3.5 Flash |
-| NVIDIA | `NVIDIA_API_KEY` | Nemotron-3 Ultra, Nemotron 70B, Llama 4 Maverick, Gemma 4, Qwen3, DeepSeek V4, Mistral Large 3, and 25+ more |
 | OpenAI | `OPENAI_API_KEY` | GPT-4o, GPT-4-turbo, GPT-3.5-turbo |
 | Anthropic | `ANTHROPIC_API_KEY` | Claude 3 Opus, Sonnet, Haiku |
 | Qwen | `QWEN_API_KEY` | Qwen2.5 Coder 32B, 7B |
-| Groq | `GROQ_API_KEY` | Groq-hosted models |
+| Groq | `GROQ_API_KEY` | Llama 3 70B, Mixtral 8x7B |
 | Ollama | `OLLAMA_BASE_URL` | Llama 3, CodeLlama, Mistral (local) |
 
-Without any API key, the **static scanner fallback** activates automatically.
+> ⭐ **Default provider**: NVIDIA with **Google Gemma 3-27B**. Set `NVIDIA_API_KEY` in `.env` to enable streaming audits. Without any API key, the **static scanner fallback** activates automatically.
 
 ---
 
@@ -164,8 +164,8 @@ Frontend (React + Vite)              Backend (FastAPI + Python)
 
 ```bash
 # AI Provider Keys
-GEMINI_API_KEY=your_key_here        # Default provider (Google Gemini)
-NVIDIA_API_KEY=your_key_here
+NVIDIA_API_KEY=your_key_here         # Default — Gemma 3/4 via NVIDIA NIM
+GEMINI_API_KEY=your_key_here
 OPENAI_API_KEY=your_key_here
 ANTHROPIC_API_KEY=your_key_here
 QWEN_API_KEY=your_key_here
@@ -174,10 +174,6 @@ OLLAMA_BASE_URL=http://localhost:11434
 
 # Blockchain Explorer
 ETHERSCAN_API_KEY=your_key_here
-BSCSCAN_API_KEY=your_key_here
-POLYGONSCAN_API_KEY=your_key_here
-ARBISCAN_API_KEY=your_key_here
-OPTIMISTIC_ETHERSCAN_API_KEY=your_key_here
 
 # App Config
 PORT=8000
