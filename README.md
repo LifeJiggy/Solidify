@@ -5,6 +5,8 @@ AI-powered smart contract security auditor with real-time streaming, stop/pause/
 Built at **GDG Abuja × Build with AI Sprint Hackathon** by Team Solidify.
 Part of the TCP (The Coding Peace) ecosystem — Ghost hunts Web2, Solidify hunts Web3.
 
+**Live at**: [solidify-two.vercel.app](https://solidify-two.vercel.app)
+
 ---
 
 ## What It Does
@@ -13,7 +15,7 @@ Part of the TCP (The Coding Peace) ecosystem — Ghost hunts Web2, Solidify hunt
 - **Real-time AI streaming** — see the analysis arrive character-by-character via SSE
 - **Stop / Pause / Resume** — full control over long-running audits
 - **Structured audit report** — severity counts, expandable vuln cards, CVSS scores
-- **14+ vulnerability classes** — reentrancy, access control, overflow, unchecked calls, flash loans, oracle manipulation, front-running, selfdestruct, delegatecall, weak randomness, unprotected initializers, zero-address checks, centralization risk, and more
+- **19+ vulnerability classes** — reentrancy, access control, overflow, unchecked calls, flash loans, oracle manipulation, front-running, selfdestruct, delegatecall, weak randomness, unprotected initializers, zero-address checks, centralization risk, price manipulation, tx.origin auth, timestamp dependence, unbounded gas, missing zero-address, floating pragma, and more
 - **Multi-provider AI** — NVIDIA (Gemma 3/4, Llama, Nemotron), OpenAI, Anthropic, Qwen, Groq, Ollama
 - **Chat with AI** — ask security questions in plain English
 - **Export** — JSON, Markdown, HTML report formats
@@ -35,7 +37,13 @@ python server.py
 
 Starts on `http://localhost:8000`.
 
-**Production**: [solidify-eight.vercel.app](https://solidify-eight.vercel.app)
+**Production**: [solidify-two.vercel.app](https://solidify-two.vercel.app)
+
+### Deploy to Vercel
+```powershell
+npx vercel --prod
+```
+Requires `NVIDIA_API_KEY` set in Vercel Dashboard → Environment Variables. The build command compiles the frontend and the serverless function serves both API and static files.
 
 ### 2. Frontend
 ```powershell
@@ -81,7 +89,6 @@ Switch providers in Settings. Set the corresponding environment variable before 
 | Provider | Env Variable | Default Models |
 |----------|-------------|----------------|
 | **NVIDIA** ⭐ | `NVIDIA_API_KEY` | **Google Gemma 4-27B**, Gemma 4-9B, Gemma 3-27B, Gemma 3-12B, Llama 3.1 Nemotron 70B, Nemotron 4-340B |
-| Google | `GEMINI_API_KEY` | Gemini 2.5 Flash, 2.5 Pro, 3.5 Flash |
 | OpenAI | `OPENAI_API_KEY` | GPT-4o, GPT-4-turbo, GPT-3.5-turbo |
 | Anthropic | `ANTHROPIC_API_KEY` | Claude 3 Opus, Sonnet, Haiku |
 | Qwen | `QWEN_API_KEY` | Qwen2.5 Coder 32B, 7B |
@@ -167,7 +174,6 @@ Frontend (React + Vite)              Backend (FastAPI + Python)
 ```bash
 # AI Provider Keys
 NVIDIA_API_KEY=your_key_here         # Default — Gemma 3/4 via NVIDIA NIM
-GEMINI_API_KEY=your_key_here
 OPENAI_API_KEY=your_key_here
 ANTHROPIC_API_KEY=your_key_here
 QWEN_API_KEY=your_key_here
@@ -188,18 +194,19 @@ CORS_ORIGINS=http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173
 
 ```
 solidify/
-├── server.py                    # FastAPI entry point
-├── providers/                   # AI provider wrappers (8 providers)
+├── server.py                    # FastAPI app — API routes + static file mount
+├── api/index.py                  # Vercel serverless entrypoint (imports server.py)
+├── vercel.json                   # Vercel deployment config
+├── providers/                   # AI provider wrappers (6 providers)
 │   ├── streaming.py             # Centralized stream processor
 │   ├── stream_mixin.py          # Streaming mixin utilities
-│   ├── nvidia.py                # NVIDIA NIM provider
+│   ├── nvidia.py                # NVIDIA NIM provider (default)
 │   ├── openai.py                # OpenAI provider
 │   ├── anthropic.py             # Anthropic provider
 │   ├── groq.py                  # Groq provider
 │   ├── ollama.py                # Ollama local provider
 │   ├── qwen.py                  # Qwen provider
-│   ├── google.py                # Google provider
-│   ├── minimax.py               # MiniMax provider
+│   ├── google.py                # Google Gemini provider
 │   ├── provider_factory.py      # Provider factory + cache
 │   └── __init__.py
 ├── frontend/
@@ -210,11 +217,7 @@ solidify/
 │   │   ├── main.jsx
 │   │   └── components/          # UI components
 │   └── package.json
-├── rules/                        # Static detection rules
-├── memory/                       # Session memory
-├── audits/                       # Audit engine modules
-├── reports/                      # Report templates
-├── models/                       # Model configurations
+├── requirements.txt              # Python dependencies
 ├── USAGE.md                      # Detailed usage guide
 └── README.md
 ```
