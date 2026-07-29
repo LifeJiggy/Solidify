@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
 
 load_dotenv()
@@ -1087,6 +1088,11 @@ async def detect_oracle(code: str = Body(..., embed=True)):
                         "recommendation": "Use Chainlink VRF", "severity": "CRITICAL"})
     return {"vulnerabilities": issues}
 
+
+# Mount frontend static files if they exist
+_static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend", "dist")
+if os.path.isdir(_static_dir):
+    app.mount("/", StaticFiles(directory=_static_dir, html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
