@@ -10,7 +10,9 @@ export default function NetworkStatus() {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 3000);
       try {
-        const res = await fetch('http://localhost:8000/api/chains', { signal: controller.signal });
+        const dev = typeof location !== 'undefined' && location.hostname === 'localhost';
+        const apiBase = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE) || (dev ? 'http://localhost:8000/api' : '/api');
+        const res = await fetch(apiBase + '/chains', { signal: controller.signal });
         if (mounted.current) setStatus(res.ok ? 'connected' : 'error');
       } catch {
         if (mounted.current) setStatus('offline');
