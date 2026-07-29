@@ -35,6 +35,8 @@ python server.py
 
 Starts on `http://localhost:8000`.
 
+**Production**: [solidify-eight.vercel.app](https://solidify-eight.vercel.app)
+
 ### 2. Frontend
 ```powershell
 cd frontend
