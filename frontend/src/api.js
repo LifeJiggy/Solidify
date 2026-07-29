@@ -1,4 +1,5 @@
-const API_BASE = 'https://solidify-eight.vercel.app/api';
+const DEV = typeof location !== 'undefined' && location.hostname === 'localhost';
+const API_BASE = DEV ? 'http://localhost:8000/api' : '/api';
 const DEFAULT_TIMEOUT = 30000;
 const STREAM_TIMEOUT = 120000;
 
